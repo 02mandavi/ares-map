@@ -11,6 +11,7 @@ import Chat from './Chat.jsx';
 import { person } from './roles.js';
 import { DEFAULT_VITALS } from './vitals.js';
 import Start from './Start.jsx';
+import Boot from './Boot.jsx';
 import SolsView from './Sols.jsx';
 import { ARES } from './sols.js';
 import { RoverViewer, RoverSpecs } from './RoverCad.jsx';
@@ -53,9 +54,10 @@ function useQuery(key, init) {
 }
 
 export default function App() {
-  const [data, setData] = useState(null), [err, setErr] = useState(null);
+  const [data, setData] = useState(null), [err, setErr] = useState(null), [done, setDone] = useState({});
   useEffect(() => {
-    Promise.all([loadSite(), loadImage('data/ctx.jpg'), loadImage('data/themis_day.jpg'), loadImage('data/themis_night.jpg')])
+    const tick = (k, p) => p.then((v) => { setDone((d) => ({ ...d, [k]: k === 'ctx' ? v.src : true })); return v; }); // each row of the first screen ticks when its own file is in
+    Promise.all([tick('site', loadSite()), tick('ctx', loadImage('data/ctx.jpg')), tick('themis_day', loadImage('data/themis_day.jpg')), tick('themis_night', loadImage('data/themis_night.jpg'))])
       .then(([site, ctx, day, night]) => setData({ site, imgs: { ctx, themis_day: day, themis_night: night } }))
       .catch((e) => setErr(e));
   }, []);
@@ -66,12 +68,7 @@ export default function App() {
       <button className="btn" onClick={() => location.reload()}>Try again</button>
     </div>
   );
-  if (!data) return (
-    <div className="state-screen" aria-busy="true">
-      <div className="skeleton-map" />
-      <p className="muted">Loading terrain: 200 m elevation, CTX, THEMIS and HiRISE for a 40 × 31 km box around the habitat.</p>
-    </div>
-  );
+  if (!data) return <Boot done={done} ctxSrc={done.ctx} />;
   return <Mission site={data.site} imgs={data.imgs} />;
 }
 

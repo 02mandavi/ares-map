@@ -568,3 +568,17 @@ details.more[open] { display: grid; gap: var(--space-xs); }
 .sol-map.is-big { position: fixed; inset: var(--space-md); z-index: 40; padding: var(--space-md); background: var(--color-paper); border-radius: var(--radius-card); box-shadow: 0 0 0 100vmax color-mix(in oklab, black 60%, transparent); grid-template-rows: minmax(0, 1fr) auto; }
 .sol-map.is-big svg { height: 100%; aspect-ratio: auto; cursor: zoom-out; }
 @media (max-width: 50rem) { .sols { grid-template-columns: minmax(0, 1fr); } .sols .sol-map svg { height: auto; max-height: 14rem; } }
+
+/* First screen while data loads (Boot.jsx): one headline, one line, a progress bar; the real CTX photo on the right */
+.boot { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-2xl); align-items: center; padding: var(--space-2xl) var(--gutter); max-width: var(--container); margin-inline: auto; }
+.boot-copy { display: grid; gap: var(--space-lg); min-width: 0; }
+.boot-h { font-family: var(--font-display); font-size: clamp(2.5rem, 5vw, 4.5rem); line-height: 1; font-weight: 500; overflow-wrap: break-word; min-width: 0; max-width: 12ch; }
+.boot-sub { color: var(--color-muted); font-size: var(--text-lg); max-width: 34ch; }
+.boot-bar { height: 2px; background: var(--color-hair); overflow: hidden; max-width: 34ch; }
+.boot-bar i { display: block; height: 100%; background: var(--color-time); transform-origin: left; transition: transform var(--dur-long) var(--ease-out); }
+.boot-fig { margin: 0; display: grid; gap: var(--space-xs); min-width: 0; }
+.boot-fig img, .boot-wait { width: 100%; aspect-ratio: 1439 / 1590; object-fit: cover; object-position: left center; border-radius: var(--radius-card); background: var(--color-paper-2); } /* the CTX strip covers the west 1439 of 2048 px: crop the unimaged east */
+.boot-fig img { animation: boot-in var(--dur-long) var(--ease-out); }
+@keyframes boot-in { from { opacity: 0; transform: scale(1.02); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .boot-fig img { animation: none; } .boot-bar i { transition: none; } }
+@media (max-width: 760px) { .boot { grid-template-columns: minmax(0, 1fr); } }

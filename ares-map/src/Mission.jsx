@@ -13,6 +13,8 @@ import { CAD } from './RoverCad.jsx';
 export const TRUE_SCALE = 9 / 5.4 / 1000; // the rover model is drawn 5.4 units long; MARS-X HORIZON is about 9 m (team spec Rev 0.1)
 export const VIEWS = [['chase', 'Chase'], ['driver', 'Driver eye'], ['overview', 'Whole route']];
 const ROVER_SCALE = { chase: TRUE_SCALE, driver: TRUE_SCALE, overview: 0.02, free: 0.02 };
+// The habitat CAD is in metres (0.001 map km each): draw it at the same multiple of true size as the rover in every camera, so the two stay in proportion.
+export const habScaleFor = (view) => (ROVER_SCALE[view] ?? TRUE_SCALE) / TRUE_SCALE * 0.001;
 const COL = { now: '#af50ff', done: '#5ec27a', later: '#f7f9fa' };
 
 // Work legs in order, with their place in the plan.

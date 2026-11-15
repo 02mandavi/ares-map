@@ -125,7 +125,7 @@ function CameraRig({ api, onUserMove }) {
   return null;
 }
 
-export default function MapScene({ site, surface, texture, habXZ, pins, activePin, onPin, hirise, children, rig, onPick, pov, onUserMove, spin, close }) {
+export default function MapScene({ site, surface, texture, habXZ, pins, activePin, onPin, hirise, children, rig, onPick, pov, onUserMove, spin, close, habScale }) {
   const pinEls = useRef({});
   if (!hasWebGL) return <p className="empty no-gl" role="alert">The 3D map needs WebGL, which this browser or device has switched off. Open the link in a current Chrome, Edge or Firefox with hardware acceleration on.</p>;
   return (
@@ -138,7 +138,7 @@ export default function MapScene({ site, surface, texture, habXZ, pins, activePi
       <directionalLight position={[-20, 12, 6]} intensity={1.6} />
       <Terrain site={site} surface={surface} texture={texture} onPick={onPick} />
       <Suspense fallback={null}>{hirise.map((h) => <Hirise key={h.id} site={site} surface={surface} item={h} />)}</Suspense>
-      <Habitat surface={surface} xz={habXZ} scale={close ? 0.001 : undefined} />{/* true metres in the Mission view */}
+      <Habitat surface={surface} xz={habXZ} scale={habScale} />{/* same multiple of true size as the rover (Mission.jsx habScaleFor) */}
       {!pov && pins.map((p) => <Pin key={p.id} surface={surface} xz={p.xz} active={activePin === p.id} />)}
       <ProjectPins pins={pov ? [] : pins} els={pinEls} surface={surface} />
       {!pov && children}

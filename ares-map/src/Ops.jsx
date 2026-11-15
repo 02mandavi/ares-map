@@ -174,6 +174,7 @@ function Monitor({ user, monitor, storm, sim, plan, roverMode, setRoverMode }) {
         <p className="num">EVA clock {fmtClock(plan.start, sim.t)} · {alerts ? <strong style={{ color: 'var(--color-danger)' }}>{alerts} reading{alerts > 1 ? 's' : ''} outside range</strong> : 'all readings in range'}</p>
         <p className="note">Simulated from the EVA clock: run the drive in Field, then come back here. No real sensors are connected. Ranges are placeholders with their source to verify.</p>
       </section>
+      <div className="vitals-grid">
       <section className="stack-s">
         <h2>Crew</h2>
         {crew.map((c) => (
@@ -201,8 +202,9 @@ function Monitor({ user, monitor, storm, sim, plan, roverMode, setRoverMode }) {
         <Readings r={rover.r} />
         <RoverModeControl cur={roverMode} user={user} setRoverMode={setRoverMode} />
         <ModeGuide cur={roverMode} />
-        <p className="note">The autonomous system picks the mode from the slope and ground along the planned route: it switches to B just before slope or rock, and goes back to A only after 0.6 km of easy ground, so it does not flip back and forth. A crew member or Mission Control can override it, and every change goes in the Log. Thresholds are placeholders to check against the MARS-X spec. The model on the left follows the mode.</p>
+        <p className="note">The autonomous system picks the mode from the slope and ground along the planned route: it switches to B just before slope or rock, and goes back to A only after 0.6 km of easy ground, so it does not flip back and forth. A crew member or Mission Control can override it, and every change goes in the Log. Thresholds are placeholders to check against the MARS-X spec. The Rover page shows the model in each mode.</p>
       </section>
+      </div>
     </>
   );
 }
@@ -218,7 +220,7 @@ export function VitalsPanel({ user, vitals, setVitals, audit, monitor, storm, si
   const counts = vitals.rows.reduce((c, r) => { const l = assess(r, vitals.daysToReturn).level; c[l] = (c[l] || 0) + 1; return c; }, {});
   const num = (r, k) => editable ? <input type="number" className="cell-input" aria-label={`${r.name} ${k}`} value={r[k]} onChange={(e) => edit(r.id, { [k]: +e.target.value })} /> : r[k];
   return (
-    <div className="stack">
+    <div className="stack vitals-full">
       <div className="row" role="group" aria-label="Vitals view">
         <button className="tab" aria-pressed={tab === 'live'} onClick={() => setTab('live')}>Live monitor</button>
         <button className="tab" aria-pressed={tab === 'supplies'} onClick={() => setTab('supplies')}>Supplies</button>
@@ -231,6 +233,7 @@ export function VitalsPanel({ user, vitals, setVitals, audit, monitor, storm, si
           {editable ? <input type="number" min="0" value={vitals.daysToReturn} onChange={(e) => setVitals((v) => ({ ...v, daysToReturn: +e.target.value }))} /> : <span className="num">{vitals.daysToReturn}</span>}</label>
         <p className="note">Starting values are placeholders, not mission data. A value turns “measured” when a crew member enters it. Pessimistic = burn × {PAD} (T2).{editable ? '' : ` ${user.name} can read but not edit.`}</p>
       </section>
+      <div className="vitals-grid">
       {groups.map((g) => (
         <section key={g} className="stack-s">
           <h2>{g}</h2>
@@ -262,6 +265,7 @@ export function VitalsPanel({ user, vitals, setVitals, audit, monitor, storm, si
           </table>
         </section>
       ))}
+      </div>
       <div className="row">
         <button className="btn" onClick={() => download('data:application/json,' + encodeURIComponent(JSON.stringify(vitals, null, 1)), 'ares-vitals.json')}>Export ledger</button>
         <button className="btn" onClick={() => { audit('ran dust storm test: power generation −30%'); setVitals((v) => ({ ...v, rows: v.rows.map((r) => (r.kind === 'balance' ? { ...r, dust: 30, source: 'simulated', by: user.id } : r)) })); }}>Dust storm test</button>

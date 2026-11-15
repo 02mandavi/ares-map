@@ -16,7 +16,7 @@ import SolsView from './Sols.jsx';
 import { ARES } from './sols.js';
 import { RoverViewer, RoverSpecs } from './RoverCad.jsx';
 import { readings, autoMode, holdModes, MODE_STEP_KM } from './monitor.js';
-import { MissionScene, MissionHud } from './Mission.jsx';
+import { MissionScene, MissionHud, habScaleFor } from './Mission.jsx';
 import { AGENTS, CLASSES, classify, terrainLayer } from './terrain.js';
 import { buildPlanner, makeGrid, cellOf } from './planner/plan.js';
 import { feasibility } from './planner/feasible.js';
@@ -307,7 +307,7 @@ function Mission({ site, imgs }) {
       )}
 
       <main className="map">
-        <MapScene close={mission} spin={start} site={site} surface={surface} texture={texture} habXZ={habXZ} rig={rig} pov={pov} onPick={pick}
+        <MapScene close={mission} habScale={mission ? habScaleFor(view) : undefined} spin={start} site={site} surface={surface} texture={texture} habXZ={habXZ} rig={rig} pov={pov} onPick={pick}
           pins={start ? [] : mission || layers.stations ? stations : []} activePin={sel} onPin={(id) => { setSel(id); const w = mission && timeline.legs.find((l) => l.kind === 'work' && l.stop.id === id); if (w) setTour((s) => ({ ...s, t: w.t0 + 1 / 600 })); else flyTo(stations.find((s) => s.id === id).xz); }}
           hirise={layers.hirise && !field ? site.meta.hirise : []}>
           {mission ? <MissionScene surface={surface} timeline={timeline} t={tour.t} habXZ={habXZ} view={view} roverMode={modeAt(tour.t).mode} onUserMove={freeCam} /> : <>

@@ -23,7 +23,6 @@ export default function Login({ onPick }) {
     <div className="start login">
       <header className="start-nav"><span className="wordmark">A.R.E.S.<span>FIELD MAP</span></span></header>
       <main className="login-main">
-        <p className="lede">A.R.E.S. plans a seven-sol crew mission at a crater near Chryse Planitia, Mars, on NASA orbital data: where the rover can drive, where the crew can walk back from, and when they must turn back.</p>
         <h1 className="display-s">Who is signing in?</h1>
         <p className="lede">Pick your seat. You will see the whole crew and your own tasks.</p>
         {group('Crew', PEOPLE.filter((p) => p.human && !p.remote))}

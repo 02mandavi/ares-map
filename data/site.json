@@ -7,12 +7,12 @@
  },
  "widthKm": 39.92095881462157,
  "heightKm": 30.999998704716404,
- "radius": 3396190.0,
+ "radius": 3396190,
  "dem": {
   "w": 227,
   "h": 155,
-  "min": -4812.0,
-  "max": -3474.0
+  "min": -4812,
+  "max": -3474
  },
  "tex": {
   "w": 2048,
@@ -22,7 +22,7 @@
  "ctxThemisCorr": 0.471,
  "ctxShiftKm": [
   -0.4,
-  -2.0
+  -2
  ],
  "hirise": [
   {
@@ -72,6 +72,21 @@
     "ESP_050666_2090_4.jpg",
     "ESP_050666_2090_5.jpg"
    ]
+  }
+ ],
+ "ctxAdded": [
+  {
+   "id": "J15_050666_2087_XI_28N040W",
+   "date": "2017-05-18",
+   "incidenceDeg": 40.49,
+   "mPerPx": 5.74,
+   "orientation": "line0=N,s0=W",
+   "shiftKm": [
+    -0.8,
+    -1
+   ],
+   "ctxCorr": 0.815,
+   "filledPct": 34.2
   }
  ]
 }

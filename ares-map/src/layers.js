@@ -103,6 +103,27 @@ export function robotLayer(site) {
   return c;
 }
 
+// Base map for display: CTX where it exists, and THEMIS day IR (100 m) where it doesn't, so every site sits on real imagery.
+// THEMIS is matched to CTX's brightness and contrast over the ground both cover. Display only: terrain classes still read
+// the raw CTX, so ground without CTX stays "unknown" to the planner. Returns { img, url, fillPct }.
+export function ctxFilled(ctxImg, themisImg) {
+  const TW = ctxImg.width, TH = ctxImg.height, c = canvas(TW, TH), g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(themisImg, 0, 0, TW, TH); const t = g.getImageData(0, 0, TW, TH);
+  g.drawImage(ctxImg, 0, 0, TW, TH); const k = g.getImageData(0, 0, TW, TH), d = k.data, td = t.data;
+  const HOLE = 4; // CTX pixels at or below this are the empty fill (JPEG leaves a little noise round 0)
+  let n = 0, sc = 0, sc2 = 0, st = 0, st2 = 0;
+  for (let i = 0; i < d.length; i += 4) if (d[i] > HOLE && td[i] > HOLE) { n++; sc += d[i]; sc2 += d[i] * d[i]; st += td[i]; st2 += td[i] * td[i]; }
+  const mc = sc / n, mt = st / n, gain = Math.sqrt(Math.max(1e-6, sc2 / n - mc * mc) / Math.max(1e-6, st2 / n - mt * mt));
+  let filled = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i] > HOLE) continue;
+    const v = Math.max(0, Math.min(255, mc + (td[i] - mt) * gain));
+    d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; filled++;
+  }
+  g.putImageData(k, 0, 0);
+  return { img: c, url: c.toDataURL('image/jpeg', 0.86), fillPct: Math.round(100 * filled / (TW * TH)) };
+}
+
 export function compose(target, site, base, layers) {
   const { w: TW, h: TH } = site.meta.tex, g = target.getContext('2d');
   g.globalAlpha = 1; g.fillStyle = '#000'; g.fillRect(0, 0, TW, TH);

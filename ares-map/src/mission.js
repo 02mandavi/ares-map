@@ -71,7 +71,7 @@ if (import.meta.env?.DEV) {
 
 // Provenance for every layer (brief: cite every claim).
 export const SOURCES = {
-  ctx: { title: 'CTX image', product: 'MRO CTX P15_006980_2087 (EDR)', res: '~5.7 m/px, shown ~15 m/px', date: '2008-01-28 (verify)', crs: 'placed by footprint corners, shifted −0.4 km E, −2.0 km N to match THEMIS (corr 0.47)', credit: 'NASA/JPL/MSSS', url: 'https://ode.rsl.wustl.edu/mars/' },
+  ctx: { title: 'CTX image', product: 'MRO CTX P15_006980_2087 (EDR)', res: '~5.7 m/px, shown ~15 m/px', date: '2008-01-28 (verify)', crs: 'placed by footprint corners, shifted −0.4 km E, −2.0 km N to match THEMIS (corr 0.47)', credit: 'NASA/JPL/MSSS', url: 'https://ode.rsl.wustl.edu/mars/', note: 'East of the CTX strip (S1, S2, S5) the base map shows THEMIS day IR at 100 m instead, matched to CTX brightness. Display only: that ground is still unknown to the planner.' },
   hirise: { title: 'HiRISE strips', product: 'ESP_022869_2085 (2011-06-13), ESP_050666_2090 (2017-05-18), RED RDR', res: '0.5 m/px source, 2 m/px in detail view', date: 'see product', crs: 'equirectangular, PDS label bounds', credit: 'NASA/JPL/University of Arizona', url: 'https://hirise.lpl.arizona.edu/' },
   themis_day: { title: 'THEMIS day IR', product: 'THEMIS controlled mosaic MC-11 Oxia Palus, day IR', res: '100 m/px', date: 'mosaic', crs: 'equirectangular, clon 0', credit: 'NASA/JPL/ASU, USGS', url: 'https://stac.astrogeology.usgs.gov/' },
   themis_night: { title: 'THEMIS night IR', product: 'THEMIS controlled mosaic MC-11 Oxia Palus, night IR', res: '100 m/px', date: 'mosaic', crs: 'equirectangular, clon 0', credit: 'NASA/JPL/ASU, USGS', url: 'https://stac.astrogeology.usgs.gov/', note: 'Bright at night = holds heat = rock or coarse ground. Dark = dust or fine sand.' },

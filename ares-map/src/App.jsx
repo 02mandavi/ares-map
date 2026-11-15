@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import MapScene, { Draped, Ring, Label } from './MapScene.jsx';
 import { loadSite, makeSurface, distKm } from './geo.js';
-import { loadImage, reliefLayer, slopeDeg, slopeLayer, viewshed, radioLayer, coverageLayer, robotLayer, compose, canvas } from './layers.js';
+import { loadImage, reliefLayer, slopeDeg, slopeLayer, viewshed, radioLayer, coverageLayer, robotLayer, compose, canvas, ctxFilled } from './layers.js';
 import { HAB, CRATER, PLACEHOLDERS, EVA_H, planTimeline, positionAt, alongKm, CRACK_COLORS, fmtClock, download } from './mission.js';
 import { LayerPanel, OverviewPanel, PrintSheets } from './Panels.jsx';
 import { VitalsPanel, LogPanel } from './Ops.jsx';
@@ -121,6 +121,7 @@ function Mission({ site, imgs }) {
     const vis = viewshed(site, habXZ, PLACEHOLDERS.mastM);
     return { slopes, vis, relief: reliefLayer(site), radio: radioLayer(site, vis), coverage: coverageLayer(site, imgs.ctx), robot: robotLayer(site) };
   }, [site, habXZ, imgs.ctx]);
+  const baseMap = useMemo(() => ctxFilled(imgs.ctx, imgs.themis_day), [imgs.ctx, imgs.themis_day]); // display only: CTX, with THEMIS day IR where CTX has no data
   const cls = useMemo(() => classify(site, imgs, derived.slopes, limits), [site, imgs, derived.slopes, limits]);
   const terrainImg = useMemo(() => terrainLayer(site, cls), [site, cls]);
   // Travel-time planner: time-to-home maps rebuilt only when speed, slope limits or classes change
@@ -162,7 +163,7 @@ function Mission({ site, imgs }) {
   const field = mode === 'field';
   const on = useCallback((k) => layers[k] || (field && (k === 'slope' || k === 'robot' || k === 'route')), [layers, field]); // safety layers cannot be hidden in Field
   useEffect(() => {
-    const baseImg = base === 'relief' ? { img: derived.relief, smooth: false } : { img: imgs[base] ?? imgs.ctx };
+    const baseImg = base === 'relief' ? { img: derived.relief, smooth: false } : base === 'ctx' || !imgs[base] ? { img: baseMap.img } : { img: imgs[base] };
     const stack = [];
     if (pov || mode === 'mission') { compose(texCanvas, site, baseImg, stack); texture.needsUpdate = true; return; } // crew and mission views show imagery only, so the route reads first
     if (on('coverage') && !field) stack.push({ img: derived.coverage });
@@ -171,7 +172,7 @@ function Mission({ site, imgs }) {
     if (on('radio')) stack.push({ img: derived.radio, pixelated: true });
     if (on('robot')) stack.push({ img: derived.robot });
     compose(texCanvas, site, baseImg, stack); texture.needsUpdate = true;
-  }, [base, on, field, derived, dim, terrainImg, slopeImg, imgs, site, texCanvas, texture, pov, mode]);
+  }, [base, on, field, derived, dim, terrainImg, slopeImg, imgs, baseMap, site, texCanvas, texture, pov, mode]);
 
   // --- Field simulation clock (sim.t in hours)
   const pos = useMemo(() => positionAt(timeline, sim.t), [timeline, sim.t]);
@@ -317,7 +318,7 @@ function Mission({ site, imgs }) {
           {tracing?.pts.length > 0 && <Draped surface={surface} pts={tracing.pts.map((p) => site.toXZ(...p))} color="#af50ff" width={3} step={0.05} />}
           </>}
           {(mode === 'plan' || mission) && <Label surface={surface} xz={habXZ} tone="base">Base · habitat</Label>}
-          {mode === 'plan' && noCtx.map((s) => <Label key={'nc' + s.id} surface={surface} xz={[s.xz[0], s.xz[1] + 0.9]}>{s.id}: no CTX image</Label>)}
+          {mode === 'plan' && noCtx.map((s) => <Label key={'nc' + s.id} surface={surface} xz={[s.xz[0], s.xz[1] + 0.9]}>{s.id}: 100 m image only</Label>)}
         </MapScene>
 
         {pov ? (
@@ -340,7 +341,7 @@ function Mission({ site, imgs }) {
             <span className="hud-note num">Height ×{ve} · ground smoothed for display · symbols not to scale</span>
           </div>
         )}
-        {mode === 'sols' && <SolsView site={site} noCtx={new Set(noCtx.map((s) => s.sol))} routes={Object.fromEntries(stations.map((s, i) => [s.sol, siteRoutes[i].pts]))} />}
+        {mode === 'sols' && <SolsView site={site} baseUrl={baseMap.url} noCtx={new Set(noCtx.map((s) => s.sol))} routes={Object.fromEntries(stations.map((s, i) => [s.sol, siteRoutes[i].pts]))} />}
         {mode === 'debrief' && <RoverViewer k={cadK ?? 'drill'} setK={setCadK} rover={monitor.rover} />}
         {descentPick && <p className="trace-hint" role="status">Tap the spot on crack {descentPick} where the crew may go down. <button className="btn" onClick={() => setDescentPick(null)}>Cancel</button></p>}
         {tracing && <p className="trace-hint" role="status">Tracing: tap the terrain along the crack. {tracing.pts.length} points.</p>}

@@ -35,7 +35,7 @@ function Toggle({ id, label, layers, setLayers, locked, children, src }) {
 }
 
 export function LayerPanel({ base, setBase, layers, setLayers, ve, setVe, limits, setLimits, layersFull, setLayersFull }) {
-  const bases = [['ctx', 'CTX image, ~20 m (shrunk from 6 m)'], ['themis_day', 'THEMIS day IR, 100 m'], ['themis_night', 'THEMIS night IR, 100 m'], ['relief', 'Shaded relief, 200 m']];
+  const bases = [['ctx', 'CTX image, ~20 m (shrunk from 6 m); THEMIS 100 m where CTX has no data'], ['themis_day', 'THEMIS day IR, 100 m'], ['themis_night', 'THEMIS night IR, 100 m'], ['relief', 'Shaded relief, 200 m']];
   const t = { layers, setLayers };
   useEffect(() => { if (!layersFull) return; const k = (e) => e.key === 'Escape' && setLayersFull(false); addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [layersFull, setLayersFull]);
   return (

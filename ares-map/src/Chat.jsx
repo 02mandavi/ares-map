@@ -37,7 +37,6 @@ async function searchWeb(key, query) {
   const r = await new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true }).messages.create({ model: MODEL, max_tokens: 2000, system: ask, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }], messages: [{ role: 'user', content: query }] });
   return { answer: r.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim() };
 }
-const WAKE = /\b(hey|hi|hello|okay|ok)[\s,]+(aries|ares|a\.r\.e\.s\.?|ari?es|aris|arise|aires|airies|eris|iris|harris|harry's|arias|a r e s)\b[\s,.!?]*/i; // speech-to-text spells the name many ways
 
 const TOOLS = [
   { name: 'evaluate_route', description: 'Plan a drive from the habitat through the given stops in order and back. Returns feasible (true/false) with the reasons, the time, distance and whether it fits before the turn-back reserve. Use it for any "what if we go to X then Y" question.',
@@ -108,30 +107,18 @@ Health data marked private stays private: do not guess at it.`;
 export default function Chat(ctx) {
   const [open, setOpen] = useState(false), [key, setKey] = useState(() => { try { return localStorage.getItem(KEY) ?? ''; } catch { return ''; } });
   const [draft, setDraft] = useState(''), [msgs, setMsgs] = useState([]), [busy, setBusy] = useState(false), [err, setErr] = useState('');
-  const [listening, setListening] = useState(false), [heard, setHeard] = useState(''), [voice, setVoice] = useState(null); // voice: { phase, heard, reply } while a spoken exchange is on screen
-  const history = useRef([]), rec = useRef(null), awaiting = useRef(false), hide = useRef(0), ctxRef = useRef(ctx), listenRef = useRef(null), endRef = useRef(null), askRef = useRef(null);
+  const history = useRef([]), ctxRef = useRef(ctx), endRef = useRef(null);
   useEffect(() => { ctxRef.current = ctx; });
-  const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
 
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }); }, [msgs, busy]);
 
-  const say = (text, follow) => { // speak; then either listen for a follow-up without the wake word, or fade the card out
-    clearTimeout(hide.current);
-    const done = () => {
-      if (follow && rec.current?.keep) { awaiting.current = true; setVoice((v) => v && { ...v, phase: 'followup' }); hide.current = setTimeout(() => { awaiting.current = false; setVoice(null); }, 8000); }
-      else hide.current = setTimeout(() => setVoice(null), 6000);
-    };
-    if (!window.speechSynthesis) return done();
-    window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.onend = done; u.onerror = done; window.speechSynthesis.speak(u);
-  };
-  const ask = async (text, spoken) => {
+  const ask = async (text) => {
     text = text.trim(); if (!text || busy) return;
-    if (!key) { setOpen(true); setErr('Add your API key first.'); if (spoken) { const m = 'Add your API key in the A.R.E.S. panel and I can answer.'; setVoice({ phase: 'reply', heard: text, reply: m }); say(m); } return; }
-    if (spoken) { clearTimeout(hide.current); setVoice({ phase: 'thinking', heard: text }); }
+    if (!key) { setOpen(true); setErr('Add your API key first.'); return; }
     setErr(''); setBusy(true); setMsgs((m) => [...m, { who: 'you', text }]);
     const g = isGemini(key), o = isOllama(key), sys = () => `${SYSTEM}\n\nMission data right now (JSON):\n${JSON.stringify(snapshot(ctxRef.current))}`;
-    const reply = (answer) => { setMsgs((m) => [...m, { who: 'ares', text: answer }]); if (spoken) { setVoice({ phase: 'reply', heard: text, reply: answer }); say(answer, true); } };
-    const refuse = () => { setMsgs((m) => [...m, { who: 'ares', text: 'I can\'t help with that one.' }]); if (spoken) setVoice(null); };
+    const reply = (answer) => { setMsgs((m) => [...m, { who: 'ares', text: answer }]); };
+    const refuse = () => { setMsgs((m) => [...m, { who: 'ares', text: 'I can\'t help with that one.' }]); };
     // History is in the format of whichever service the key belongs to; saving a new key clears it.
     const messages = [...history.current, g ? { role: 'user', parts: [{ text }] } : { role: 'user', content: text }];
     let answered = false;
@@ -172,39 +159,9 @@ ${JSON.stringify(snapshot(ctxRef.current))}` }, ...messages] }) });
       if (answered) history.current = messages; // shortcut: whole chat resent each turn, trim it if chats get long
     } catch (e) {
       const m = o && !e?.status ? `Could not reach Ollama on this computer. Is it running? On the live site, set OLLAMA_ORIGINS to allow it (${e?.message ?? e}).` : `${o ? 'Ollama' : g ? 'Gemini' : 'Claude'} said: ${e?.message ?? e}${[400, 401, 403].includes(e?.status) ? ' (check the key: Remove key, paste a fresh one from the provider, save)' : ''}`; // the provider's own words, so a bad key is told apart from a bad request
-      setErr(m); if (spoken) { setVoice({ phase: 'reply', heard: text, reply: m }); say(m); }
+      setErr(m);
     } finally { setBusy(false); }
   };
-  useEffect(() => { askRef.current = ask; });
-
-  const listen = () => { // continuous listening for "Hey Aries"; the browser asks for the microphone first
-    if (listening) { rec.current?.stop(); setListening(false); return; }
-    const r = new SR(); r.continuous = true; r.interimResults = false; r.lang = 'en-IN';
-    r.onresult = (e) => {
-      if (window.speechSynthesis?.speaking) return; // don't hear our own voice
-      const said = e.results[e.results.length - 1][0].transcript; setHeard(said);
-      if (awaiting.current) { awaiting.current = false; askRef.current(said, true); return; } // the question after a bare "Hey Aries"
-      const m = said.match(WAKE); if (!m) return;
-      const q = said.slice(m.index + m[0].length);
-      if (q.trim()) askRef.current(q, true);
-      else { awaiting.current = true; clearTimeout(hide.current); setVoice({ phase: 'listening' }); hide.current = setTimeout(() => { awaiting.current = false; setVoice(null); }, 10000); }
-    };
-    r.onend = () => { if (rec.current === r && r.keep) r.start(); }; // Chrome stops after silence; restart while on
-    r.onerror = (e) => { if (e.error === 'not-allowed') { r.keep = false; setListening(false); setErr('Microphone blocked. Allow it in the browser to use "Hey Aries".'); } };
-    r.keep = true; rec.current = r; r.start(); setListening(true);
-  };
-  useEffect(() => { // start listening by itself once the microphone has been allowed for this site
-    if (!SR) return;
-    navigator.permissions?.query({ name: 'microphone' }).then((p) => { if (p.state === 'granted' && !rec.current) listenRef.current(); }).catch(() => { /* browser can't report it: use the button */ });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { listenRef.current = listen; });
-  useEffect(() => () => { if (rec.current) { rec.current.keep = false; rec.current.stop(); } }, []);
-  const talk = () => { // push to talk: the next thing said is the question, no wake word needed
-    if (!rec.current?.keep) listen();
-    window.speechSynthesis?.cancel(); awaiting.current = true; clearTimeout(hide.current); setVoice({ phase: 'listening' });
-    hide.current = setTimeout(() => { awaiting.current = false; setVoice(null); }, 10000);
-  };
-  const stopListen = () => { if (rec.current) { rec.current.keep = false; rec.current.stop(); } setListening(false); };
 
   useEffect(() => { // load the local model ahead of the first question; the first load takes about a minute
     if (isOllama(key)) fetch(`${OLLAMA}/api/chat`, { method: 'POST', body: JSON.stringify({ model: ollamaModel(key), messages: [], keep_alive: '30m' }) }).catch(() => { /* reported on the first question */ });
@@ -217,8 +174,6 @@ ${JSON.stringify(snapshot(ctxRef.current))}` }, ...messages] }) });
         <section className="chat-panel" aria-label="A.R.E.S. companion">
           <header className="chat-head">
             <strong>A.R.E.S.</strong>
-            {SR && <button className="btn btn-s btn-primary" onClick={talk}>Talk</button>}
-            {SR && <button className="btn btn-s" aria-pressed={listening} onClick={listening ? stopListen : listen}>{listening ? 'Listening for "Hey Aries"' : 'Turn on "Hey Aries"'}</button>}
             <button className="btn btn-s" onClick={() => setOpen(false)} aria-label="Close">Close</button>
           </header>
           {!key ? (
@@ -230,7 +185,7 @@ ${JSON.stringify(snapshot(ctxRef.current))}` }, ...messages] }) });
             </form>
           ) : <>
             <ol className="chat-log" aria-live="polite">
-              {!msgs.length && <li className="chat-hint small muted">Ask about the route, the turn-back time, your tasks, or "what if we skip S2?"{SR ? ' Or say "Hey Aries" with listening on.' : ''}</li>}
+              {!msgs.length && <li className="chat-hint small muted">Ask about the route, the turn-back time, your tasks, or "what if we skip S2?"</li>}
               {msgs.map((m, i) => <li key={i} className={'chat-msg is-' + m.who}>{m.text}</li>)}
               {busy && <li className="chat-msg is-ares muted">Thinking…</li>}
               <li ref={endRef} aria-hidden="true" />
@@ -239,31 +194,15 @@ ${JSON.stringify(snapshot(ctxRef.current))}` }, ...messages] }) });
               <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask A.R.E.S." aria-label="Ask A.R.E.S." />
               <button className="btn btn-primary" disabled={busy || !draft.trim()}>Ask</button>
             </form>
-            <p className="chat-foot small muted">{listening && heard ? `Heard: "${heard}" · ` : ''}Advice only; the crew decides. <button className="link" onClick={() => saveKey('')}>Remove key</button></p>
+            <p className="chat-foot small muted">Advice only; the crew decides. <button className="link" onClick={() => saveKey('')}>Remove key</button></p>
           </>}
           {err && <p className="small warn" role="alert">{err}</p>}
         </section>
       )}
-      {voice && (
-        <section className="voice" role="status" aria-live="polite" aria-label="A.R.E.S. voice">
-          <span className={'voice-orb is-' + voice.phase} aria-hidden="true" />
-          <div className="voice-text">
-            <p className="voice-state">{voice.phase === 'listening' ? 'Listening. Ask your question.' : voice.phase === 'followup' ? 'Anything else? I’m listening.' : voice.phase === 'thinking' ? 'Thinking…' : 'A.R.E.S.'}</p>
-            {voice.heard && <p className="small muted">You: {voice.heard}</p>}
-            {voice.reply && <p>{voice.reply}</p>}
-          </div>
-          <button className="btn btn-s" onClick={() => { awaiting.current = false; window.speechSynthesis?.cancel(); setVoice(null); }}>Close</button>
-        </section>
-      )}
       {!open && <div className="chat-fabs">
-        {SR && <button className="btn chat-fab" onClick={talk}>Talk to A.R.E.S.</button>}
-        {SR && <button className="btn chat-fab" aria-pressed={listening} onClick={listening ? stopListen : listen}>{listening ? 'Say "Hey Aries"' : 'Turn on "Hey Aries"'}</button>}
         <button className="btn btn-primary chat-fab" onClick={() => setOpen(true)}>Ask A.R.E.S.</button>
       </div>}
     </div>
   );
 }
 
-if (import.meta.env?.DEV) {
-  console.assert(WAKE.test('hey aries what is next') && WAKE.test('Hey, ARES.') && WAKE.test('hey Aris what is next') && !WAKE.test('the area is clear'), 'wake word');
-}

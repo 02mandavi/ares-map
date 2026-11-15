@@ -404,14 +404,6 @@ details.more[open] { display: grid; gap: var(--space-xs); }
 
 .chat { z-index: var(--z-toast); }
 .chat-fabs { display: flex; gap: var(--space-xs); flex-wrap: wrap; justify-content: flex-end; }
-.voice { position: fixed; left: 50%; bottom: var(--space-3xl); translate: -50% 0; z-index: var(--z-toast); width: min(520px, calc(100vw - 2 * var(--space-md))); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-md); align-items: center; padding: var(--space-md) var(--space-lg); border: 1px solid var(--color-accent); border-radius: var(--radius-card); background: var(--color-paper); color: var(--color-ink); box-shadow: 0 12px 40px rgb(0 0 0 / 0.45); }
-.voice-text { display: grid; gap: var(--space-2xs); }
-.voice-state { font-weight: 600; }
-.voice-orb { width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--color-focus), var(--color-accent) 70%); }
-.voice-orb.is-listening, .voice-orb.is-thinking { animation: orb 1.2s ease-in-out infinite; }
-@keyframes orb { 50% { transform: scale(1.15); opacity: 0.75; } }
-@media (prefers-reduced-motion: reduce) { .voice-orb { animation: none !important; } }
-.voice-orb.is-followup { animation: orb 1.2s ease-in-out infinite; }
 
 .mx-days { grid-area: days; align-self: start; display: grid; gap: var(--space-xs); max-height: 100%; overflow-y: auto; }
 .mx-days-h { font-size: var(--text-sm); font-weight: 600; margin: 0; }

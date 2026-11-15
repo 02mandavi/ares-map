@@ -32,16 +32,6 @@ const DATA = ['ctx', 'hirise', 'themis_night', 'relief'];
 
 const Arrow = () => <svg className="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h17M14 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>;
 
-function Barcode({ seed }) { // decorative bars drawn from the route text, not a scannable code
-  const bars = [...seed].flatMap((ch, i) => { const c = ch.charCodeAt(0); return [1 + c % 3, 1 + (c >> 2) % 2, 1 + (c + i) % 4]; });
-  let x = 0;
-  return (
-    <svg className="barcode" viewBox={`0 0 ${bars.reduce((a, b) => a + b * 2, 0)} 40`} preserveAspectRatio="none" aria-hidden="true">
-      {bars.map((w, i) => { const r = i % 2 ? null : <rect key={i} x={x} width={w} height="40" />; x += w * 2; return r; })}
-    </svg>
-  );
-}
-
 const LEVEL = { ok: 'OK', watch: 'Watch', bad: 'Act now' };
 const WHERE = { mc: 'Earth, messages arrive minutes late', auto: 'Rover computer' };
 
@@ -104,35 +94,34 @@ export default function Start({ go, plan, reach, user, route, signOut, timeline,
   return (
     <div className="start">
       <header className="start-nav">
-        <span className="wordmark">A.R.E.S.<span>FIELD MAP</span></span>
-        <button className="stamp-link" onClick={() => go('plan')}>[ OPEN MAP ]</button>
+        <span className="wordmark">A.R.E.S.<span>Mars field map</span></span>
+        <button className="stamp-link" onClick={() => go('plan')}>Open the map</button>
       </header>
 
       <section className="hero">
         <div className="hero-copy">
           <h1 className="display">
-            <span className="l"><span className="serif">Every step</span></span>
-            <span className="l sans">planned to come home</span>
-            <span className="l dim"><span className="serif">before seven hours</span></span>
+            <span className="l sans">Walk on Mars.</span>
+            <span className="l sans dim">Come home safe.</span>
           </h1>
-          <p className="lede">A crater near Chryse Planitia, read from orbit, so a crew knows when to turn back before they leave.</p>
+          <p className="lede">A 3D map of a real Mars crater, built from NASA photos. It plans each day’s drive and tells the crew when to turn back.</p>
           <button className="play" onClick={() => go('mission')}>
-            <span>Ride the planned EVA</span><i aria-hidden="true" />
+            <span>Watch a mission day</span><i aria-hidden="true" />
           </button>
         </div>
 
-        <aside className="pass" aria-label="Boarding pass for the planned EVA">
-          <p className="stamp-sm">{dest ? `Next EVA, Sol ${dest.sol}` : 'Next EVA'}</p>
-          <h2>{dest ? dest.name : 'Pick a sol in Mission'}</h2>
+        <aside className="pass" aria-label="The next trip outside">
+          <p className="small muted">Next trip outside</p>
+          <h2>{dest ? `Sol ${dest.sol}: drive to site ${dest.id}` : 'Pick a sol in Mission'}</h2>
+          {dest && <p className="small muted">{dest.name}, {dest.risk}</p>}
           <div className="route num" aria-label={`From the habitat to ${dest ? dest.id : 'no station yet'}`}><span>HAB</span><Arrow /><span>{dest ? dest.id : 'none'}</span></div>
           <dl className="pass-kv num">
             <dt>Signed in</dt><dd>{user.role} <button className="btn btn-s" onClick={signOut}>Sign out</button></dd>
-            <dt>Depart</dt><dd>{plan.start}</dd>
+            <dt>Leave at</dt><dd>{plan.start}</dd>
             <dt>Turn back by</dt><dd>{fmtClock(plan.start, EVA_H - plan.reserveH)}</dd>
-            <dt>Reach</dt><dd>{reach.toFixed(1)} km at {plan.speed} km/h</dd>
-            {!feas.feasible && <><dt>Plan</dt><dd className="bad">{feas.reasons[0]}{feas.reasons.length > 1 ? ` (+${feas.reasons.length - 1} more)` : ''}</dd></>}
+            <dt>Rover range</dt><dd>{reach.toFixed(1)} km at {plan.speed} km/h</dd>
+            {!feas.feasible && <><dt>Warning</dt><dd className="bad">{feas.reasons[0]}{feas.reasons.length > 1 ? ` (+${feas.reasons.length - 1} more)` : ''}</dd></>}
           </dl>
-          <Barcode seed={'HAB' + route.map((s) => s.id).join('')} />
           <div className="pass-actions">
             <button className="pill" onClick={() => go('plan')}>Open the map</button>
             <button className="pill" onClick={() => go('mission')}>Run the mission</button>
@@ -141,7 +130,7 @@ export default function Start({ go, plan, reach, user, route, signOut, timeline,
       </section>
 
       <section className="start-band" aria-labelledby="work-h">
-        <h2 id="work-h" className="display-s">Your work, <em className="serif">{user.role}</em></h2>
+        <h2 id="work-h" className="display-s">Your work, {user.role}</h2>
         <p>{DUTIES[user.id]}.</p>
         {(() => { const mine = tasksFor(user.id, route); return mine.length ? (
           <ol className="my-tasks">{mine.map(({ stop, task }) => <li key={stop.id + task}><span className="num">{stop.id}</span> {task} <span className="muted">at {stop.name}</span></li>)}</ol>
@@ -180,7 +169,7 @@ export default function Start({ go, plan, reach, user, route, signOut, timeline,
       </section>
 
       <section className="start-band" aria-labelledby="data-h">
-        <h2 id="data-h" className="display-s"><em className="serif">Four</em> kinds of orbit data, <em className="serif">one</em> route</h2>
+        <h2 id="data-h" className="display-s">Four NASA views of the same ground</h2>
         <ol className="legs">
           {DATA.map((k, i) => (
             <li key={k}>
@@ -195,7 +184,6 @@ export default function Start({ go, plan, reach, user, route, signOut, timeline,
       </section>
 
       <footer className="start-foot">
-        <span className="stamp-sm">[ A.R.E.S. footer ]</span>
         <span>NASA Space Apps 2026, NASA Walo Ka Group, Delhi. Built with help from AI (Anthropic Claude) for code and copy; all map data is NASA, ESA and USGS, credited above.</span>
         <span className="num coords"><span>28.43° N 319.77° E</span><span>Sol {mc.sol}</span><span>{hhmm(mc.lmst)} local mean solar time</span></span>
       </footer>

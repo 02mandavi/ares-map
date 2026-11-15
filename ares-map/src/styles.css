@@ -199,7 +199,7 @@ textarea { background: transparent; color: var(--color-ink); border: 1px solid v
 .start-nav { position: sticky; top: 0; z-index: var(--z-sticky-nav); display: flex; justify-content: space-between; align-items: center; padding: var(--space-md) var(--gutter); background: color-mix(in oklab, var(--color-dusk-top) 55%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--color-hair); }
 .wordmark { font-weight: 700; font-size: var(--text-lg); letter-spacing: 0.02em; }
 .wordmark span { font-weight: 300; margin-left: var(--space-2xs); }
-.stamp-link { background: none; border: 0; padding: var(--space-xs) 0; color: var(--color-ink); font-family: var(--font-outlier); font-size: var(--text-sm); letter-spacing: var(--tracking-stamp); cursor: pointer; }
+.stamp-link { background: none; border: 0; padding: var(--space-xs) 0; color: var(--color-ink); font-size: var(--text-md); cursor: pointer; }
 .stamp-link:hover { color: var(--color-focus); }
 .hero { min-height: calc(100dvh - var(--space-3xl)); display: grid; grid-template-columns: 1.25fr 0.75fr; gap: var(--space-2xl); align-items: center; padding: var(--space-2xl) var(--gutter) var(--space-3xl); background: linear-gradient(180deg, color-mix(in oklab, var(--color-dusk-top) 80%, transparent) 0%, color-mix(in oklab, var(--color-dusk-mid) 30%, transparent) 58%, var(--color-paper) 100%); }
 .display { display: grid; font-size: clamp(3rem, 7.2vw, 6rem); line-height: 0.92; letter-spacing: -0.03em; font-weight: 400; }
@@ -214,14 +214,13 @@ em.serif { font-style: italic; }
 .play i::after { content: ""; position: absolute; inset: 32% 28% 32% 38%; background: var(--color-accent); clip-path: polygon(0 0, 100% 50%, 0 100%); }
 .play:hover i { background: color-mix(in oklab, var(--color-accent) 25%, transparent); transform: scale(1.06); }
 .pass { display: grid; gap: var(--space-sm); padding: var(--space-xl); border: 1px solid var(--color-hair); border-radius: var(--radius-card); background: var(--color-glass); backdrop-filter: blur(14px); }
-.stamp-sm { font-family: var(--font-outlier); text-transform: uppercase; letter-spacing: var(--tracking-stamp); font-size: var(--text-xs); color: var(--color-ink-2); font-weight: 400; }
+.stamp-sm { font-size: var(--text-sm); color: var(--color-ink-2); font-weight: 400; }
 .route { display: flex; align-items: center; gap: var(--space-sm); font-size: var(--text-2xl); letter-spacing: 0.08em; }
 .route .arrow { width: 2em; height: 1em; }
 .pass h2 { font-size: var(--text-2xl); font-weight: 400; letter-spacing: -0.01em; line-height: 1.1; }
 .pass-kv { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-2xs) var(--space-md); margin: 0; font-size: var(--text-sm); }
 .pass-kv dt { color: var(--color-muted); }
 .pass-kv dd { margin: 0; }
-.barcode { width: 100%; height: 40px; fill: var(--color-ink); opacity: 0.85; }
 .pass-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 .pill { padding: var(--space-md) var(--space-lg); border: 0; border-radius: var(--radius-pill); background: var(--color-glass); color: var(--color-ink); cursor: pointer; transition: background-color var(--dur-micro) var(--ease-out); }
 .pill:hover { background: color-mix(in oklab, var(--color-ink) 16%, transparent); }

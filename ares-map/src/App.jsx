@@ -67,7 +67,7 @@ export default function App() {
   if (!data) return (
     <div className="state-screen" aria-busy="true">
       <div className="skeleton-map" />
-      <p className="muted">Loading terrain: 200 m elevation, CTX, THEMIS and HiRISE for a 31 × 31 km box around the habitat.</p>
+      <p className="muted">Loading terrain: 200 m elevation, CTX, THEMIS and HiRISE for a 40 × 31 km box around the habitat.</p>
     </div>
   );
   return <Mission site={data.site} imgs={data.imgs} />;
@@ -79,7 +79,7 @@ function Mission({ site, imgs }) {
   const start = mode === 'start';
   const [base, setBase] = useQuery('base', 'ctx');
   const [sel, setSel] = useQuery('st', null);
-  const [layers, setLayers] = useStored('ares.layers', { hirise: true, coverage: true, cracks: true, stations: true, slope: true, robot: true, radio: false, reach: true, walk: true, route: true, terrain: true, paths: false });
+  const [layers, setLayers] = useStored('ares.layers.v2', { hirise: true, coverage: false, cracks: true, stations: true, slope: false, robot: false, radio: false, route: true, terrain: false, paths: false }); // opens on the real images; analysis layers are one click away
   const [ve, setVe] = useState(1.5); // ×3 tripled every 200 m facet; ×1.5 still shows the crater rim
   const [stored, setPlan] = useStored('ares.plan.sols', { speed: 8, workH: 3, route: ['S1'], work: {} });
   const plan = { ...stored, start: '07:30', reserveH: 0.25 }; // fixed by the sol briefs (07:30 start, 15 min reserve); no control edits them, so never read them from storage
@@ -127,6 +127,7 @@ function Mission({ site, imgs }) {
   // one site per day: drive out and back take the brief's time; the planner gives the path (it bends round slopes and rough ground)
   const dayLegs = useMemo(() => (routeStops.length === 1 ? paths.rover.map((l) => ({ ...l, hours: routeStops[0].driveH })) : paths.rover), [routeStops, paths]);
   const timeline = useMemo(() => planTimeline(habXZ, routeStops, plan.speed, undefined, dayLegs), [habXZ, routeStops, plan.speed, dayLegs]);
+  const noCtx = useMemo(() => stations.filter((s) => CLASSES[cls[cellOf(planner.grid, s.xz)]]?.id === 'unknown'), [stations, cls, planner]); // sites outside the CTX strip
   const siteRoutes = useMemo(() => stations.map((s) => planner.leg('rover', habXZ, s.xz)), [stations, planner, habXZ]); // Overview: base to every site
   const totalFor = useCallback((st) => planTimeline(habXZ, st, plan.speed, undefined, planner.legs('rover', st)).totalH, [habXZ, plan.speed, planner]);
   const chooseOpts = useMemo(() => { // inputs for ranking stop sets; rover legs between any two places are cached per planner
@@ -190,7 +191,7 @@ function Mission({ site, imgs }) {
     const y = surface.y(xz[0], xz[1]);
     fly([xz[0] + d * 0.35, y + d * 0.8, xz[1] + d * 0.75], [xz[0], y, xz[1]]);
   }, [surface, fly]);
-  const overview = useCallback(() => fly([9, 20, 24], [0, 0, -1]), [fly]);
+  const overview = useCallback(() => fly([4, 46, 30], [4, 0, -6]), [fly]); // frames the base and all five sol sites (x -7..15 km, z -12..-1 km)
   const topDown = useCallback(() => fly([0, 46, 0.01], [0, 0, 0], 0), [fly]);
   useEffect(() => { if (mode === 'print') return; const t = setTimeout(overview, 50); return () => clearTimeout(t); }, [overview]); // eslint-disable-line react-hooks/exhaustive-deps
   const crewView = useCallback((xz, lookXZ, label) => setPov({ xz, look: lookXZ, label, yaw: 0 }), []);
@@ -285,6 +286,7 @@ function Mission({ site, imgs }) {
           {tracing?.pts.length > 0 && <Draped surface={surface} pts={tracing.pts.map((p) => site.toXZ(...p))} color="#af50ff" width={3} step={0.05} />}
           </>}
           {(mode === 'plan' || mission) && <Label surface={surface} xz={habXZ} tone="base">Base · habitat</Label>}
+          {mode === 'plan' && noCtx.map((s) => <Label key={'nc' + s.id} surface={surface} xz={[s.xz[0], s.xz[1] + 0.9]}>{s.id}: no CTX image</Label>)}
         </MapScene>
 
         {pov ? (
@@ -307,7 +309,7 @@ function Mission({ site, imgs }) {
             <span className="hud-note num">Height ×{ve} · ground smoothed for display · symbols not to scale</span>
           </div>
         )}
-        {mode === 'sols' && <SolsView site={site} routes={Object.fromEntries(stations.map((s, i) => [s.sol, siteRoutes[i].pts]))} />}
+        {mode === 'sols' && <SolsView site={site} noCtx={new Set(noCtx.map((s) => s.sol))} routes={Object.fromEntries(stations.map((s, i) => [s.sol, siteRoutes[i].pts]))} />}
         {mode === 'debrief' && <RoverViewer k={cadK ?? 'drill'} setK={setCadK} rover={monitor.rover} />}
         {descentPick && <p className="trace-hint" role="status">Tap the spot on crack {descentPick} where the crew may go down. <button className="btn" onClick={() => setDescentPick(null)}>Cancel</button></p>}
         {tracing && <p className="trace-hint" role="status">Tracing: tap the terrain along the crack. {tracing.pts.length} points.</p>}

@@ -13,7 +13,7 @@ import './sol7.jsx';
 const TYPE = { drive_out: 'Drive out', setup: 'Setup', science: 'Science EVA', break: 'Break', closeout: 'Close-out', drive_back: 'Drive back', reserve: 'Reserve', admin: 'Admin', lab: 'Lab' };
 
 // routes: { [sol n]: route polyline in map km } from the planner, so the map shows the bent path, not a straight line.
-export default function SolsView({ site, routes = {} }) {
+export default function SolsView({ site, routes = {}, noCtx = new Set() }) {
   const [big, setBig] = useState(false); // the map sits small beside the day's data; tap to enlarge
   useSols();
   const days = ARES.days();
@@ -32,7 +32,7 @@ export default function SolsView({ site, routes = {} }) {
 
   return (
     <div className="sols">
-      <SolMap site={site} {...ctx} route={routes[day.n]} big={big} setBig={setBig} />
+      <SolMap site={site} {...ctx} route={routes[day.n]} noCtx={noCtx.has(day.n)} big={big} setBig={setBig} />
       <div className="sols-side">
         <nav className="seg" aria-label="Sol">
           {days.map((d) => <button key={d.n} className="tab" aria-pressed={d.n === day.n} onClick={() => pick(d.n)}>Sol {d.n}</button>)}
@@ -156,7 +156,7 @@ function Experiments({ day }) {
 }
 
 // ---- map module: CTX image in km around the habitat, route, rover, and anything the sol adds ----
-function SolMap({ site, day, t, rover, route, big, setBig }) {
+function SolMap({ site, day, t, rover, route, noCtx, big, setBig }) {
   const { w, e, n, s } = site.meta.bounds, kLat = 3396.19 * Math.PI / 180, kLon = kLat * Math.cos(((n + s) / 2) * Math.PI / 180);
   const P = (lat, lon) => [(lon - w) * kLon, (n - lat) * kLat], W = (e - w) * kLon, H = (n - s) * kLat;
   const [bx, by] = P(day.base.lat, day.base.lon), [sx, sy] = P(day.site.lat, day.site.lon);
@@ -189,7 +189,7 @@ function SolMap({ site, day, t, rover, route, big, setBig }) {
         {!buffer && <text x={mx + fs * 0.6} y={my} fontSize={fs * 0.9} className="sol-label sol-dir">{day.dirLabel ?? `${String(day.bearing).padStart(3, '0')}° ${compass16(day.bearing)}`} · {day.straightKm} km straight, {day.pathKm.toFixed(1)} km path</text>}
         <circle cx={rx} cy={ry} r={fs * 0.35} className={'sol-rover' + (rover.moving ? ' is-moving' : '')}><title>Rover: {rover.where}</title></circle>
       </svg>
-      <figcaption className="small muted">{buffer ? `CTX image, north up. Base area only, ${pad} km around the habitat. No rover travel.` : <>CTX image, north up. {path ? 'Route from the travel-time planner: it bends round slopes and rough ground.' : 'Route drawn as a straight line.'} The brief's path is {day.pathKm.toFixed(1)} km. Rover position is the plan replayed, not live tracking.</>}</figcaption>
+      <figcaption className="small muted">{buffer ? `CTX image, north up. Base area only, ${pad} km around the habitat. No rover travel.` : <>{noCtx ? 'No CTX image covers this site: the dark ground is unimaged at this scale. ' : 'CTX image, north up. '}{path ? 'Route from the travel-time planner: it bends round slopes and rough ground.' : 'Route drawn as a straight line.'} The brief's path is {day.pathKm.toFixed(1)} km. Rover position is the plan replayed, not live tracking.</>}</figcaption>
     </figure>
   );
 }

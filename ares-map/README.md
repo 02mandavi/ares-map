@@ -47,3 +47,16 @@ npm run dev
 ```
 
 Tests: `npm test`. Build: `npx vite build`.
+
+## Working from any computer
+
+The code lives on the `source` branch; the live site is the built `dist` on `main`.
+
+```bash
+git clone -b source https://github.com/02mandavi/ares-map.git ares
+cd ares/ares-map && npm install
+git clone -b main https://github.com/02mandavi/ares-map.git dist   # once, for deploys
+```
+
+Before you start: `git pull`. When done: commit, then `git push`.
+Deploy: `npx vite build`, then in `dist`: `git add -A`, commit, `git push`. Vite keeps `dist/.git` when it rebuilds.

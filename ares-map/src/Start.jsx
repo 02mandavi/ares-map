@@ -73,7 +73,7 @@ function CrewNow({ user, timeline, monitor, t }) {
 }
 
 // Objectives as a timeline: each stop becomes a milestone when the crew marks it complete.
-function Milestones({ user, timeline, plan, feas, objectives, setObjectives, audit }) {
+function Milestones({ user, timeline, plan, feas, objectives, setObjectives, audit, ground }) {
   const stops = stopsOf(timeline), ok = can(user, 'complete-objective');
   const done = stops.filter((s) => objectives[s.stop.id]?.done).length;
   const mark = (id) => { setObjectives((o) => ({ ...o, [id]: { done: true, at: new Date().toLocaleDateString('en-CA'), by: user.id } })); audit(`completed objective ${id}`); };
@@ -89,7 +89,7 @@ function Milestones({ user, timeline, plan, feas, objectives, setObjectives, aud
             <span className="ms-name">{s.stop.name} <span className="muted num">{s.stop.id}</span></span>
             <span className="ms-state small">{o?.done ? `Complete · ${person(o.by).role}, ${o.at}` : ok ? <button className="btn btn-s" onClick={() => mark(s.stop.id)}>Mark complete</button> : 'Planned'}</span>
           </li>); })}
-        <li className="ms is-end"><span className="ms-dot" aria-hidden="true" /><span className={'ms-time num' + (feas.feasible ? '' : ' bad')}>{fmtClock(plan.start, timeline.totalH)}</span><span className="ms-name">Back home{!feas.feasible && <span className="small bad"> · turn back by {fmtClock(plan.start, EVA_H - plan.reserveH)}</span>}</span></li>
+        <li className="ms is-end"><span className="ms-dot" aria-hidden="true" /><span className={'ms-time num' + (feas.feasible ? '' : ' bad')}>{fmtClock(plan.start, timeline.totalH)}</span><span className="ms-name">Back home{ground && <span className="small muted num"> · {fmtClock(plan.start, ground.badH)} if the ground is bad</span>}{!feas.feasible && <span className="small bad"> · turn back by {fmtClock(plan.start, EVA_H - plan.reserveH)}</span>}</span></li>
       </ol>
       {!feas.feasible && <p className="small bad" role="status">This plan does not fit: {feas.reasons.join('. ')}.</p>}
       {!ok && <p className="note">Only crew on site can mark a milestone complete.</p>}
@@ -97,7 +97,7 @@ function Milestones({ user, timeline, plan, feas, objectives, setObjectives, aud
   );
 }
 
-export default function Start({ go, plan, reach, user, route, signOut, timeline, feas, monitor, objectives, setObjectives, audit, sim }) {
+export default function Start({ go, plan, reach, user, route, signOut, timeline, feas, monitor, objectives, setObjectives, audit, sim, ground }) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
   const mc = marsClock(now, 319.77), dest = route[0];
@@ -167,7 +167,7 @@ export default function Start({ go, plan, reach, user, route, signOut, timeline,
 
       <section className="start-band" aria-labelledby="ms-h">
         <h2 id="ms-h" className="display-s">Mission milestones</h2>
-        {route.length ? <Milestones {...{ user, timeline, plan, feas, objectives, setObjectives, audit }} /> : <p className="empty small">No stops on the route yet. Pick them in Plan.</p>}
+        {route.length ? <Milestones {...{ user, timeline, plan, feas, objectives, setObjectives, audit, ground }} /> : <p className="empty small">No stops on the route yet. Pick them in Plan.</p>}
       </section>
 
       <section className="start-band" aria-labelledby="modes-h">

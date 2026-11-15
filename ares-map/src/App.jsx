@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import MapScene, { Draped, Ring, Label } from './MapScene.jsx';
 import { loadSite, makeSurface, distKm } from './geo.js';
 import { loadImage, reliefLayer, slopeDeg, slopeLayer, viewshed, radioLayer, coverageLayer, robotLayer, compose, canvas } from './layers.js';
-import { HAB, PLACEHOLDERS, EVA_H, planTimeline, positionAt, alongKm, CRACK_COLORS, fmtClock, download } from './mission.js';
+import { HAB, CRATER, PLACEHOLDERS, EVA_H, planTimeline, positionAt, alongKm, CRACK_COLORS, fmtClock, download } from './mission.js';
 import { LayerPanel, OverviewPanel, PrintSheets } from './Panels.jsx';
 import { VitalsPanel, LogPanel } from './Ops.jsx';
 import Login from './Login.jsx';
@@ -21,6 +21,8 @@ import { buildPlanner, makeGrid, cellOf } from './planner/plan.js';
 import { feasibility } from './planner/feasible.js';
 import { rankRoutes, routeStats } from './planner/choose.js';
 import { PLANNER } from './planner/config.js';
+import { costField, hiriseMask, edgeMask, distanceMap } from './planner/cost.js';
+import { shouldReplan, fieldReplan } from './planner/live.js';
 
 const MODES = ['plan', 'mission', 'sols', 'debrief', 'vitals', 'log', 'print']; // Field folded into Mission (team review 2026-11-15)
 const MODE_NAMES = { plan: 'Overview', mission: 'Mission', sols: 'Sols', field: 'Field', debrief: 'Rover', vitals: 'Vitals', log: 'Log', print: 'Print' };
@@ -122,11 +124,25 @@ function Mission({ site, imgs }) {
   const cls = useMemo(() => classify(site, imgs, derived.slopes, limits), [site, imgs, derived.slopes, limits]);
   const terrainImg = useMemo(() => terrainLayer(site, cls), [site, cls]);
   // Travel-time planner: time-to-home maps rebuilt only when speed, slope limits or classes change
-  const planner = useMemo(() => buildPlanner(makeGrid(site, cls, derived.slopes, derived.vis), CLASSES.map((c) => c.id), limits, plan.speed, habXZ), [site, cls, derived.slopes, derived.vis, limits, plan.speed, habXZ]);
+  const grid = useMemo(() => makeGrid(site, cls, derived.slopes, derived.vis), [site, cls, derived.slopes, derived.vis]);
+  const crackXZ = useMemo(() => cracks.filter((c) => c.conf !== 'rejected').map((c) => c.pts.map((p) => site.toXZ(...p))), [cracks, site]);
+  // Stage 4 route cost: HiRISE bonus, setback from the trough, rim crest and traced cracks, radio-shadow cost (no relay set). Reported times stay real time.
+  const cost = useMemo(() => costField(grid, { hirise: hiriseMask(site), edgeDist: distanceMap(grid, edgeMask(grid, { craterXZ: site.toXZ(CRATER.lon, CRATER.lat), cracks: crackXZ })), vis: derived.vis, relay: false }), [grid, site, crackXZ, derived.vis]);
+  const planner = useMemo(() => buildPlanner(grid, CLASSES.map((c) => c.id), limits, plan.speed, habXZ, { cost }), [grid, cost, limits, plan.speed, habXZ]);
   const paths = useMemo(() => Object.fromEntries(Object.keys(AGENTS).map((a) => [a, planner.legs(a, routeStops)])), [planner, routeStops]); // A* per leg, in hours
   // one site per day: drive out and back take the brief's time; the planner gives the path (it bends round slopes and rough ground)
   const dayLegs = useMemo(() => (routeStops.length === 1 ? paths.rover.map((l) => ({ ...l, hours: routeStops[0].driveH })) : paths.rover), [routeStops, paths]);
   const timeline = useMemo(() => planTimeline(habXZ, routeStops, plan.speed, undefined, dayLegs), [habXZ, routeStops, plan.speed, dayLegs]);
+  // Stage 4: the same day if the ground is bad. Each drive leg keeps the brief's time, scaled by the planner's bad ÷ hopeful time for that path.
+  const ground = useMemo(() => {
+    const raw = paths.rover, f = (i, v) => (raw[i] && !raw[i].blocked && raw[i].hours > 0 ? v(raw[i]) : 0);
+    const drive = dayLegs.map((l) => (l.blocked ? 0 : l.hours));
+    return {
+      badH: timeline.totalH + drive.reduce((a, h, i) => a + f(i, (r) => h * (r.hoursBad / r.hours - 1)), 0),
+      kwh: raw.reduce((a, r) => a + (r.blocked ? 0 : r.energyKwh), 0),
+      shadowH: drive.reduce((a, h, i) => a + f(i, (r) => h * r.shadowH / r.hours), 0),
+    };
+  }, [paths, dayLegs, timeline]);
   const noCtx = useMemo(() => stations.filter((s) => CLASSES[cls[cellOf(planner.grid, s.xz)]]?.id === 'unknown'), [stations, cls, planner]); // sites outside the CTX strip
   const siteRoutes = useMemo(() => stations.map((s) => planner.leg('rover', habXZ, s.xz)), [stations, planner, habXZ]); // Overview: base to every site
   const totalFor = useCallback((st) => planTimeline(habXZ, st, plan.speed, undefined, planner.legs('rover', st)).totalH, [habXZ, plan.speed, planner]);
@@ -209,6 +225,21 @@ function Mission({ site, imgs }) {
     if (wasMission.current && !mission && !field) setTimeout(overview, 30);
     wasMission.current = mission;
   }, [mission]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Stage 5: replan during Mission playback every 5 sim-minutes, or when the rover is more than one cell off the path,
+  // on hazards widened by the position error. A turn-back is logged once per drive.
+  const [replan, setReplan] = useState(null);
+  useEffect(() => {
+    if (!mission) return;
+    const t = tour.t, p = positionAt(timeline, t), startH = +plan.start.slice(0, 2) + +plan.start.slice(3) / 60;
+    if (p.done || t === 0) { setReplan(null); return; }
+    if (replan && t >= replan.atH && !shouldReplan(planner.grid, { nowH: t, lastReplanH: replan.atH, roverXZ: p.xz, pathPts: replan.pathPts })) return;
+    const l = p.leg, kmSinceStation = l?.kind === 'drive' ? (t - l.t0) / (l.t1 - l.t0 || 1) * l.km : 0;
+    const stops = timeline.legs.filter((x) => x.kind === 'work' && x.t1 > t && !(x === l)).map((x) => x.stop);
+    const r = fieldReplan(planner.grid, CLASSES.map((c) => c.id), limits, plan.speed, habXZ, { roverXZ: p.xz, stops, nowH: t, evaH: EVA_H, reserveH: plan.reserveH, kmSinceStation, cracks: crackXZ, cost, startH });
+    const next = { atH: t, xz: p.xz, errKm: r.errKm, homeBadH: r.homeBadH, extraH: Math.max(0, r.homeBadH - planner.roverHome(p.xz, true)), pathPts: r.legs[0]?.pts ?? [p.xz], event: r.mustGoHome ? r.event : null };
+    if (next.event && !replan?.event && tour.running) ARES.logEvent(routeStops[0]?.sol ?? null, 'turn-back', next.event.text, (startH + t) * 60);
+    setReplan(next);
+  }, [mission, tour.t]); // eslint-disable-line react-hooks/exhaustive-deps
   const freeCam = useCallback(() => setView('free'), []);
   useEffect(() => { if (field) { const t = setTimeout(() => flyTo([habXZ[0] - 4, habXZ[1]], 9), 50); return () => clearTimeout(t); } }, [field]); // eslint-disable-line react-hooks/exhaustive-deps
   const exitPov = () => { setPov(null); setTimeout(overview, 30); };
@@ -252,7 +283,7 @@ function Mission({ site, imgs }) {
   const homeKm = homeLeg.km, turnBackInH = timeLeftH - planner.roverHome(pos.xz);
   const ctx = { site, mode, base, setBase, layers, setLayers, ve, setVe, plan, setPlan, limits, setLimits, stations, sel, setSel, selStation, routeStops, timeline,
     user, vitals, setVitals, decisions, setDecisions, outcomes, setOutcomes, objectives, setObjectives, auditLog, audit, accessOf,
-    reach, walk, planner, feas, totalFor, rankFor, statsFor, paths, cracks, setCracks, tracing, setTracing, descentPick, setDescentPick, layersFull, setLayersFull, monitor, storm, roverMode, setRoverMode, flyTo, crewView, habXZ, sim, setSim, pos, errKm, turnBackInH, homeKm, notes, setNotes, track, setTrack, rig, topDown, field, surface };
+    reach, walk, planner, feas, totalFor, rankFor, statsFor, paths, cracks, setCracks, tracing, setTracing, descentPick, setDescentPick, layersFull, setLayersFull, monitor, storm, roverMode, setRoverMode, flyTo, crewView, habXZ, sim, setSim, pos, errKm, turnBackInH, homeKm, notes, setNotes, track, setTrack, rig, topDown, field, surface, ground, replan };
 
   return (
     <div className="app" data-mode={mode}>
@@ -300,7 +331,7 @@ function Mission({ site, imgs }) {
             </div>
           </div>
         ) : mission ? (
-          <MissionHud {...{ stations, site, timeline, tour, setTour, view, setView, plan, setPlan, habXZ, planner, feas, totalFor, accessOf, limits, checkStop, modeAt, legModes, user, setRoverMode, objectives }} />
+          <MissionHud {...{ stations, site, timeline, tour, setTour, view, setView, plan, setPlan, habXZ, planner, feas, totalFor, accessOf, limits, checkStop, modeAt, legModes, user, setRoverMode, objectives, ground, replan }} />
         ) : !start && (
           <div className="map-hud">
             {mode === 'plan' && <button className="btn drawer-toggle" aria-expanded={drawer} onClick={() => setDrawer((d) => !d)}>Layers</button>}
@@ -322,7 +353,7 @@ function Mission({ site, imgs }) {
         {mode === 'vitals' && <VitalsPanel {...ctx} />}
         {mode === 'log' && <LogPanel {...ctx} />}
       </aside>
-      {start && <Start go={(m) => setMode(m)} {...{ plan, reach, user, signOut, timeline, feas, monitor, objectives, setObjectives, audit, sim }} route={routeStops} />}
+      {start && <Start go={(m) => setMode(m)} {...{ plan, reach, user, signOut, timeline, feas, monitor, objectives, setObjectives, audit, sim, ground }} route={routeStops} />}
       {!session && <Login onPick={signIn} />}
       <Chat {...ctx} signedIn={!!session} />
     </div>

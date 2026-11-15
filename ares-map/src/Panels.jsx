@@ -163,7 +163,7 @@ export function OverviewPanel(p) {
   );
 }
 
-export function PrintSheets({ rig, topDown, routeStops, timeline, plan, reach, walk, limits, stations, surface, habXZ, planner }) {
+export function PrintSheets({ rig, topDown, routeStops, timeline, plan, reach, walk, limits, stations, surface, habXZ, planner, ground }) {
   const [shot, setShot] = useState(null);
   const labels = [{ text: 'H', xz: habXZ }, ...stations.map((s) => ({ text: s.id, xz: s.xz }))].map((l) => ({ text: l.text, xyz: [l.xz[0], surface.y(l.xz[0], l.xz[1]), l.xz[1]] }));
   const snap = () => setShot(rig.current?.capture(labels));
@@ -196,7 +196,9 @@ export function PrintSheets({ rig, topDown, routeStops, timeline, plan, reach, w
           ))}</tbody>
         </table>
         <dl className="kv small num">
-          <dt>Back at the habitat</dt><dd>{fmtClock(plan.start, timeline.totalH)}</dd>
+          <dt>Back at the habitat</dt><dd>{fmtClock(plan.start, timeline.totalH)} expected · {fmtClock(plan.start, ground.badH)} if the ground is bad</dd>
+          <dt>Rover energy</dt><dd>{ground.kwh.toFixed(1)} kWh on the planner's path (placeholder rates)</dd>
+          <dt>Radio shadow</dt><dd>{ground.shadowH > 0 ? `about ${Math.round(ground.shadowH * 60)} min out of line of sight` : 'none: line of sight all the way'}</dd>
           <dt>Hard limit</dt><dd>{fmtClock(plan.start, EVA_H)}, reserve {plan.reserveH} h</dd>
           <dt>Rover fails</dt><dd>beyond {walk.toFixed(1)} km, call the second rover</dd>
         </dl>

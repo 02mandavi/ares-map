@@ -20,20 +20,19 @@ export function buildPlanner(g0, classes, limits, roverKmh, habXZ, opts = {}) {
   const badAgents = bad
     ? { rover: makeAgent('rover', classes, limits, roverKmh, bad), foot: makeAgent('foot', classes, limits, undefined, bad) }
     : agents
-  const maps = {
-    roverTo: homeMap(g, agents.rover, home, 'to'),
-    roverFrom: homeMap(g, agents.rover, home, 'from'),
-    footTo: homeMap(g, agents.foot, home, 'to'),
+  // Each time-to-home map is a full Dijkstra, so it is built the first time something reads it
+  // (a field replan needs only roverTo and roverToBad).
+  const maps = {}
+  const lazy = (obj, name, make) => {
+    let v
+    Object.defineProperty(obj, name, { enumerable: true, get: () => v ?? (v = make()) })
   }
-  if (bad) {
-    maps.roverToBad = homeMap(g, badAgents.rover, home, 'to')
-    maps.roverFromBad = homeMap(g, badAgents.rover, home, 'from')
-    maps.footToBad = homeMap(g, badAgents.foot, home, 'to')
-  } else {
-    maps.roverToBad = maps.roverTo
-    maps.roverFromBad = maps.roverFrom
-    maps.footToBad = maps.footTo
-  }
+  lazy(maps, 'roverTo', () => homeMap(g, agents.rover, home, 'to'))
+  lazy(maps, 'roverFrom', () => homeMap(g, agents.rover, home, 'from'))
+  lazy(maps, 'footTo', () => homeMap(g, agents.foot, home, 'to'))
+  lazy(maps, 'roverToBad', () => (bad ? homeMap(g, badAgents.rover, home, 'to') : maps.roverTo))
+  lazy(maps, 'roverFromBad', () => (bad ? homeMap(g, badAgents.rover, home, 'from') : maps.roverFrom))
+  lazy(maps, 'footToBad', () => (bad ? homeMap(g, badAgents.foot, home, 'to') : maps.footTo))
   const read = (map, xz) => mapAt(g, map, cellOf(g, xz))
 
   // A leg is routed on expected route cost; its bad-ground time is the same path at bad speeds.
@@ -95,10 +94,11 @@ export function buildPlanner(g0, classes, limits, roverKmh, habXZ, opts = {}) {
   }
   const add = (a, b) => a.map((x, i) => x + b[i])
   const lines = (values, level) => (level > 0 ? contours(g, values, level).map((l) => l.map((p) => gridToXZ(g, p))) : [])
-  const reachVal = add(maps.roverFrom.t, maps.roverTo.t)
-  const walkVal = add(maps.roverFrom.t, maps.footTo.t)
-  const reachValBad = add(maps.roverFromBad.t, maps.roverToBad.t)
-  const walkValBad = add(maps.roverFromBad.t, maps.footToBad.t)
+  const vals = {}
+  lazy(vals, 'reach', () => add(maps.roverFrom.t, maps.roverTo.t))
+  lazy(vals, 'walk', () => add(maps.roverFrom.t, maps.footTo.t))
+  lazy(vals, 'reachBad', () => add(maps.roverFromBad.t, maps.roverToBad.t))
+  lazy(vals, 'walkBad', () => add(maps.roverFromBad.t, maps.footToBad.t))
 
   return {
     grid: g,
@@ -117,18 +117,18 @@ export function buildPlanner(g0, classes, limits, roverKmh, habXZ, opts = {}) {
       read(isBad ? maps.roverFromBad : maps.roverFrom, xz) + workH + read(isBad ? maps.roverToBad : maps.roverTo, xz) <= budgetH,
     inWalkBack: (xz, workH, budgetH, isBad = true) =>
       read(isBad ? maps.roverFromBad : maps.roverFrom, xz) + workH + read(isBad ? maps.footToBad : maps.footTo, xz) <= budgetH,
-    reachLines: (workH, budgetH, isBad = true) => lines(isBad ? reachValBad : reachVal, budgetH - workH),
-    walkLines: (workH, budgetH, isBad = true) => lines(isBad ? walkValBad : walkVal, budgetH - workH),
+    reachLines: (workH, budgetH, isBad = true) => lines(isBad ? vals.reachBad : vals.reach, budgetH - workH),
+    walkLines: (workH, budgetH, isBad = true) => lines(isBad ? vals.walkBad : vals.walk, budgetH - workH),
     homeLines: (h, isBad = false) => lines(isBad ? maps.roverToBad.t : maps.roverTo.t, h),
     farthestKm: (values, level) => {
       let best = 0
       for (let c = 0; c < values.length; c++) if (values[c] <= level) best = Math.max(best, distKm(cellXZ(g, c), habXZ))
       return best
     },
-    reachVal,
-    walkVal,
-    reachValBad,
-    walkValBad,
+    get reachVal() { return vals.reach },
+    get walkVal() { return vals.walk },
+    get reachValBad() { return vals.reachBad },
+    get walkValBad() { return vals.walkBad },
   }
 }
 

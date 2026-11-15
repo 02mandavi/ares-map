@@ -145,7 +145,7 @@ function Profile({ site, accessOf, modes, leg, doneKm, limits, title }) {
   );
 }
 
-function Objectives({ timeline, t, plan, checkStop, setT, user, objectives }) {
+function Objectives({ timeline, t, plan, checkStop, setT, user, objectives, ground }) {
   const stops = stopsOf(timeline), home = timeline.legs[timeline.legs.length - 1];
   return (
     <ol className="mx-objectives" aria-label="Objectives in route order">
@@ -164,12 +164,13 @@ function Objectives({ timeline, t, plan, checkStop, setT, user, objectives }) {
         );
       })}
       <li><button className={'mx-obj is-' + (t >= timeline.totalH ? 'done' : 'later')} onClick={() => setT(home?.t0 ?? 0)}>
-        <span className="mx-n">H</span><span className="mx-name">Home</span><span className="small num">back {fmtClock(plan.start, timeline.totalH)}</span></button></li>
+        <span className="mx-n">H</span><span className="mx-name">Home</span><span className="small num">back {fmtClock(plan.start, timeline.totalH)}{ground && ` · ${fmtClock(plan.start, ground.badH)} if the ground is bad`}</span></button></li>
     </ol>
   );
 }
 
-const turnBackAt = (pos, t, plan, planner) => EVA_H - plan.reserveH - t - planner.roverHome(pos.xz); // hours until the crew must head home, from the rover's time-to-home map
+// hours until the crew must head home: the rover's time-to-home map at bad-ground speeds (Stage 4), plus the extra the last replan found on hazards widened by the position error (Stage 5)
+const turnBackAt = (pos, t, plan, planner, replan) => EVA_H - plan.reserveH - t - planner.roverHome(pos.xz, true) - (replan?.extraH ?? 0);
 // Each owner works through their own tasks in parallel, splitting the stop's work time (EVA lead and scientist walk side by side).
 export const taskAt = (l, t) => {
   const s = l.stop, tasks = s.tasks ?? [], len = l.t1 - l.t0, n = {}, k = {};
@@ -186,8 +187,8 @@ if (import.meta.env?.DEV) {
 const nextTurn = (l, t) => { const done = (t - l.t0) / (l.t1 - l.t0 || 1) * l.km; return { done, left: l.km - done, next: turnsOf(legPts(l)).find((x) => x.km > done + 0.02) }; };
 
 // Helmet: one instruction and the turn-back time, nothing else (the BASALT overload and Apollo cuff-checklist finding, planning questions Part 5).
-function HelmetCard({ timeline, t, plan, planner, user }) {
-  const pos = positionAt(timeline, t), l = pos.leg, turnBack = turnBackAt(pos, t, plan, planner);
+function HelmetCard({ timeline, t, plan, planner, user, replan }) {
+  const pos = positionAt(timeline, t), l = pos.leg, turnBack = turnBackAt(pos, t, plan, planner, replan);
   let say = 'EVA complete';
   if (!pos.done && l?.kind === 'work') { const mine = taskAt(l, t).filter((x) => x.who === user.id); say = (mine.find((x) => x.state === 'is-now') ?? mine.find((x) => !x.state))?.task ?? `No task for you at ${l.stop.id}: ${DUTIES[user.id]}`; }
   else if (!pos.done && l) { const { done, left, next } = nextTurn(l, t); say = next ? `In ${(next.km - done).toFixed(1)} km bear ${next.deg > 0 ? 'right' : 'left'}` : `Straight on ${left.toFixed(1)} km to ${l.stop ? l.stop.id : 'the habitat'}`; }
@@ -199,10 +200,10 @@ function HelmetCard({ timeline, t, plan, planner, user }) {
   );
 }
 
-function NowCard({ timeline, t, plan, habXZ, planner, accessOf, limits, checkStop, modeAt, user }) {
-  const pos = positionAt(timeline, t), l = pos.leg, turnBack = turnBackAt(pos, t, plan, planner), m = modeAt(t);
+function NowCard({ timeline, t, plan, habXZ, planner, accessOf, limits, checkStop, modeAt, user, replan }) {
+  const pos = positionAt(timeline, t), l = pos.leg, turnBack = turnBackAt(pos, t, plan, planner, replan), m = modeAt(t);
   const a = accessOf(pos.xz), slopeTone = a.slope > limits.rover ? 'is-bad' : a.slope > limits.walk ? 'is-watch' : 'is-ok';
-  const ground = <dl className="kv num"><dt>Ground here</dt><dd>{a.terrain.name}</dd><dt>Slope</dt><dd className={slopeTone}>{a.slope.toFixed(0)}° at 200 m</dd><dt>Rover mode</dt><dd>{m.mode} · {CAD[m.mode].name.split(' · ')[1]}<span className="muted"> · {modeLine(m)}</span></dd><dt>Radio to base</dt><dd>{a.radio ? 'line of sight' : 'shadow: relay needed'}</dd><dt>Turn back</dt><dd className={turnBack < 0 ? 'is-bad' : turnBack < 0.25 ? 'is-watch' : ''}>{turnBack < 0 ? 'now, ' + fmtH(-turnBack) + ' late' : 'in ' + fmtH(turnBack)}</dd></dl>;
+  const ground = <dl className="kv num"><dt>Ground here</dt><dd>{a.terrain.name}</dd><dt>Slope</dt><dd className={slopeTone}>{a.slope.toFixed(0)}° at 200 m</dd><dt>Rover mode</dt><dd>{m.mode} · {CAD[m.mode].name.split(' · ')[1]}<span className="muted"> · {modeLine(m)}</span></dd><dt>Radio to base</dt><dd>{a.radio ? 'line of sight' : 'shadow: relay needed'}</dd><dt>Turn back</dt><dd className={turnBack < 0 ? 'is-bad' : turnBack < 0.25 ? 'is-watch' : ''}>{turnBack < 0 ? 'now, ' + fmtH(-turnBack) + ' late' : 'in ' + fmtH(turnBack)}<span className="muted"> · if the ground is bad, position ±{Math.round((replan?.errKm ?? 0.02) * 1000)} m</span></dd></dl>;
   if (pos.done || !l) return <section className="mx-card mx-now"><p className="label">EVA complete</p><p className="mx-big">Back at the habitat {fmtClock(plan.start, timeline.totalH)}</p></section>;
   if (l.kind === 'work') {
     const s = l.stop, rows = taskAt(l, t), c = checkStop(s);
@@ -244,7 +245,7 @@ function NowCard({ timeline, t, plan, habXZ, planner, accessOf, limits, checkSto
   );
 }
 
-export function MissionHud({ stations, site, timeline, tour, setTour, view, setView, plan, setPlan, habXZ, planner, feas, totalFor, accessOf, limits, checkStop, modeAt, legModes, user, setRoverMode, objectives }) {
+export function MissionHud({ stations, site, timeline, tour, setTour, view, setView, plan, setPlan, habXZ, planner, feas, totalFor, accessOf, limits, checkStop, modeAt, legModes, user, setRoverMode, objectives, ground, replan }) {
   const [helmet, setHelmet] = useState(false), { t } = tour, setT = (v) => setTour((s) => ({ ...s, t: Math.max(0, Math.min(timeline.totalH, v)) }));
   useEffect(() => { // playback clock, 20 updates a second like Field
     if (!tour.running) return;
@@ -260,9 +261,10 @@ export function MissionHud({ stations, site, timeline, tour, setTour, view, setV
   if (!timeline.legs.some((x) => x.kind === 'work')) return <div className="mx-empty"><p className="empty">No route planned. Pick stops in Plan, then come back to see the drive.</p></div>;
   return (
     <div className="mx">
-      {helmet ? <HelmetCard {...{ timeline, t, plan, planner, user }} /> : <>
-      <Objectives {...{ timeline, t, plan, checkStop, setT, user, objectives }} />
-      <NowCard {...{ timeline, t, plan, habXZ, planner, accessOf, limits, checkStop, modeAt, user }} />
+      {helmet ? <HelmetCard {...{ timeline, t, plan, planner, user, replan }} /> : <>
+      <Objectives {...{ timeline, t, plan, checkStop, setT, user, objectives, ground }} />
+      {replan?.event && <p className="mx-card small is-bad" role="alert">{replan.event.text}</p>}
+      <NowCard {...{ timeline, t, plan, habXZ, planner, accessOf, limits, checkStop, modeAt, user, replan }} />
       <DaysPanel {...{ stations, site, habXZ, planner, plan, setPlan, timeline, tour, setTour }} />
       </>}
       {!helmet && profLeg && <Profile site={site} accessOf={accessOf} modes={legModes[timeline.legs.indexOf(profLeg)]} leg={profLeg} limits={limits} doneKm={l === profLeg ? (t - l.t0) / (l.t1 - l.t0 || 1) * l.km : null}

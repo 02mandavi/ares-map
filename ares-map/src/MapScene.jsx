@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { MapControls, Line, useTexture, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { densify, circle } from './geo.js';
+import { colorize } from './layers.js';
 import { Habitat, RoverModel } from './models.jsx';
 
 const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -27,6 +28,11 @@ function Terrain({ site, surface, texture, onPick }) {
 function Hirise({ site, surface, item }) {
   const tex = useTexture(`data/${item.id}.jpg`);
   tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  const map = useMemo(() => { // Mars colour (MARS_COLOR); the grey strip stays the alpha map so its black border still drops out
+    const t = new THREE.CanvasTexture(colorize(tex.image, undefined, { floor: 2 }));
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+  }, [tex]);
+  useEffect(() => () => map.dispose(), [map]);
   const geo = useMemo(() => {
     const b = item.bounds, [x0, z0] = site.toXZ(b.w, b.n), [x1, z1] = site.toXZ(b.e, b.s);
     const g = new THREE.PlaneGeometry(x1 - x0, z1 - z0, 30, 120); g.rotateX(-Math.PI / 2); g.translate((x0 + x1) / 2, 0, (z0 + z1) / 2);
@@ -34,7 +40,7 @@ function Hirise({ site, surface, item }) {
     for (let k = 0; k < p.count; k++) p.setY(k, surface.y(p.getX(k), p.getZ(k)) + 0.004);
     g.computeVertexNormals(); return g;
   }, [site, surface, item]);
-  return <mesh geometry={geo}><meshStandardMaterial map={tex} alphaMap={tex} alphaTest={0.008} roughness={1} polygonOffset polygonOffsetFactor={-2} />{/* black no-data border of the map-projected strip drops out */}</mesh>;
+  return <mesh geometry={geo}><meshStandardMaterial map={map} alphaMap={tex} alphaTest={0.008} roughness={1} polygonOffset polygonOffsetFactor={-2} />{/* black no-data border of the map-projected strip drops out */}</mesh>;
 }
 
 export function Draped({ surface, pts, color, width = 2, dashed, opacity = 1, step, lift: up = lift }) {

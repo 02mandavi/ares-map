@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import MapScene, { Draped, Ring, Label } from './MapScene.jsx';
 import { loadSite, makeSurface, distKm } from './geo.js';
-import { loadImage, reliefLayer, slopeDeg, slopeLayer, viewshed, radioLayer, coverageLayer, robotLayer, compose, canvas, ctxFilled } from './layers.js';
+import { loadImage, reliefLayer, slopeDeg, slopeLayer, viewshed, radioLayer, coverageLayer, robotLayer, compose, canvas, ctxFilled, colorize } from './layers.js';
 import { HAB, CRATER, PLACEHOLDERS, EVA_H, planTimeline, positionAt, alongKm, CRACK_COLORS, fmtClock, download } from './mission.js';
 import { LayerPanel, OverviewPanel, PrintSheets } from './Panels.jsx';
 import { VitalsPanel, LogPanel } from './Ops.jsx';
@@ -118,7 +118,10 @@ function Mission({ site, imgs }) {
     const vis = viewshed(site, habXZ, PLACEHOLDERS.mastM);
     return { slopes, vis, relief: reliefLayer(site), radio: radioLayer(site, vis), coverage: coverageLayer(site, imgs.ctx), robot: robotLayer(site) };
   }, [site, habXZ, imgs.ctx]);
-  const baseMap = useMemo(() => ctxFilled(imgs.ctx, imgs.themis_day), [imgs.ctx, imgs.themis_day]); // display only: CTX, with THEMIS day IR where CTX has no data
+  const baseMap = useMemo(() => { // display only: CTX, with THEMIS day IR where CTX has no data, in Mars colour (MARS_COLOR)
+    const f = ctxFilled(imgs.ctx, imgs.themis_day), img = colorize(f.img);
+    return { ...f, img, url: img.toDataURL('image/jpeg', 0.86) };
+  }, [imgs.ctx, imgs.themis_day]);
   const cls = useMemo(() => classify(site, imgs, derived.slopes, limits), [site, imgs, derived.slopes, limits]);
   const terrainImg = useMemo(() => terrainLayer(site, cls), [site, cls]);
   // Travel-time planner: time-to-home maps rebuilt only when speed, slope limits or classes change

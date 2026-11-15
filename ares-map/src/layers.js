@@ -124,6 +124,22 @@ export function ctxFilled(ctxImg, themisImg) {
   return { img: c, url: c.toDataURL('image/jpeg', 0.86), fillPct: Math.round(100 * filled / (TW * TH)) };
 }
 
+// Mars colour on the grey images (CTX, HiRISE): each channel = grey value x a fixed ratio. The ratios are the area-weighted
+// mean colour of the USGS Viking MDIM 2.1 colourised global mosaic (tools/viking.mjs), with the departure from grey
+// doubled (sat 2) so it reads on screen. Brightness and every detail stay the grey image's own; display only.
+// The site's own 232 m Viking colour was tried and dropped: its crater shading does not line up with CTX and left blue and pink patches.
+export const MARS_COLOR = { rgb: [1.181, 0.920, 0.899], sat: 2 }; // see SOURCES.color in mission.js
+export function colorize(grayImg, { rgb, sat = 1 } = MARS_COLOR, { floor = 0 } = {}) {
+  const TW = grayImg.width, TH = grayImg.height, k = rgb.map((r) => Math.max(0, 1 + sat * (r - 1)));
+  const c = canvas(TW, TH), g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(grayImg, 0, 0);
+  const im = g.getImageData(0, 0, TW, TH), d = im.data;
+  for (let o = 0; o < d.length; o += 4) {
+    const L = d[o + 1]; if (L <= floor) continue; // no-data borders stay black
+    d[o] = Math.min(255, L * k[0]); d[o + 1] = Math.min(255, L * k[1]); d[o + 2] = Math.min(255, L * k[2]);
+  }
+  g.putImageData(im, 0, 0); return c;
+}
+
 export function compose(target, site, base, layers) {
   const { w: TW, h: TH } = site.meta.tex, g = target.getContext('2d');
   g.globalAlpha = 1; g.fillStyle = '#000'; g.fillRect(0, 0, TW, TH);

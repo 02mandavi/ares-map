@@ -19,7 +19,7 @@ const STATUS = ['unprocessed', 'processed', 'flagged'];
 const PLANNED = [ // the samples the Sol 1-3 phase plans call for; crew edits depth and status
   ['S1-01', 1, 'Site 1', 'surface', 'surface soil'], ['S1-02', 1, 'Site 1', '10-30 cm', 'scoop sample'],
   ['S2-01', 2, 'Site 2', 'trough wall', 'wall scrape'], ['S2-02', 2, 'Site 2', '', 'soil column, trough centre'],
-  ['S2-03', 2, 'Site 2', '', 'soil column, polygon plateau'], ['S2-04', 2, 'Site 2', 'drone-flagged depth', 'wall sample'],
+  ['S2-03', 2, 'Site 2', '', 'soil column, polygon plateau'], ['S2-04', 2, 'Site 2', '', 'wall sample'],
   ['S3-01', 3, 'Site 3', '1-2 m', 'drill core'], ['S3-02', 3, 'Site 3', '', 'aseptic core sub-sample'],
 ];
 function Inventory() {
@@ -54,7 +54,7 @@ function Inventory() {
 
 // 2. Target selector for Sites 4 and 5: ranked, reorderable, saved for the Sol 5 and Sol 6 pages.
 const SEED = [ // target kinds the Sol 1-3 plans produce; the crew renames, assigns and ranks them
-  'GPR-flagged spot in the fracture (from Sol 1)', 'Drone-flagged wall depth (from Sol 2)', 'Core interval with an organics flag (from Sol 3)',
+  'GPR-flagged spot in the fracture (from Sol 1)', 'Core interval with an organics flag (from Sol 3)',
 ];
 function Targets() {
   const [list, setList] = useSolState(4, 'targets', SEED.map((name, i) => ({ id: `t${i}`, name, site: '' })));
@@ -85,7 +85,7 @@ function Targets() {
 }
 
 // 3. Sol 5 Go/No-Go.
-const GO = [['weather', 'Weather'], ['battery', 'Battery 100%'], ['suits', 'Suits'], ['drills', 'Drills'], ['drones', 'Drones'], ['comms', 'Comms'], ['health', 'Crew health']];
+const GO = [['weather', 'Weather'], ['battery', 'Battery 100%'], ['suits', 'Suits'], ['drills', 'Drills'], ['comms', 'Comms'], ['health', 'Crew health']];
 function GoNoGo() {
   const [c, setC] = useSolState(4, 'goNoGo', {}), go = GO.every(([k]) => c[k]);
   return (
@@ -124,14 +124,11 @@ function Charging({ day, t }) {
 // 5. Equipment health carried over from Sols 1-3.
 function Equipment() {
   const [ok, setOk] = useSolState(4, 'equipmentChecked', {});
-  const v1 = ARES.get(1, 'verification', {}), bl = ARES.getBaseline(1), drone2 = ARES.get(2, 'drone', null), drill = ARES.get(3, 'drill', null), core = ARES.get(3, 'contamination', {});
-  const ex = (n) => ARES.get(n, 'experiments', {});
-  const flights = [ex(1)['Nanodrone crack-mouth survey'], drone2?.status === 'recovered' || ex(2)['First nanodrone descent with temperature/humidity/light'], ex(3)['Borehole drone imaging']].filter(Boolean).length;
+  const v1 = ARES.get(1, 'verification', {}), bl = ARES.getBaseline(1), drill = ARES.get(3, 'drill', null), core = ARES.get(3, 'contamination', {});
   const faults = bl ? Object.entries(bl.instruments ?? {}).filter(([, s]) => s === 'fault').map(([i]) => i) : null;
   const res = (x) => (x ? x : 'not run');
   const rows = [
     ['bit', 'Drill bit wear', `Sol 1 drill-protocol test: ${res(v1.drill)}. Sol 3: ${drill ? `drill record at ${drill.rate} cm/min${drill.stopped ? ', stopped early' : drill.pausedMin ? `, paused ${Math.round(drill.pausedMin)} min` : ''}` : 'no drill record'}. Inspect and replace bits (C).`],
-    ['drone', 'Drone cycles', `${flights} of 3 planned flights logged (Sol 1 crack-mouth, Sol 2 descent, Sol 3 borehole). Battery and firmware service (D).`],
     ['relay', 'Relay beacon', `Sol 1 link test: ${res(v1.relay)}.`],
     ['instruments', 'Instruments', faults == null ? 'No Sol 1 baseline saved.' : faults.length ? `Faults at Sol 1 baseline: ${faults.join(', ')}.` : 'All OK at Sol 1 baseline.'],
     ['cal', 'Calibration', `Sol 1: ${res(v1.calibration)}.`],
@@ -180,7 +177,6 @@ const day = ARES.registerDay(4, {
     { name: 'Organics screening', who: 'B' },
     { name: 'Core logging', who: 'A' },
     { name: 'Target ranking', who: 'all' },
-    { name: 'Drone servicing', who: 'D' },
     { name: 'Drill-bit replacement', who: 'C' },
   ],
   Features: (p) => <><MapToggle /><Features {...p} /></>, MapExtras,

@@ -1,7 +1,7 @@
 // Sol 1: Site 1, the nearest, lowest-risk site; the crew's learning day. Only this sol's data and features live here.
 import { ARES, useSolState, socAt, toMin, fmtMin } from './sols.js';
 
-const INSTRUMENTS = ['GPR', 'Magnetometer', 'Raman/UV-fluorescence', 'ATP/lipid assay and microscope', 'Drill', 'Nanodrone'];
+const INSTRUMENTS = ['GPR', 'Magnetometer', 'Raman/UV-fluorescence', 'ATP/lipid assay and microscope', 'Drill'];
 const CHECKS = [
   ['relay', 'Relay beacon link test'],
   ['calibration', 'Instrument calibration'],
@@ -111,7 +111,6 @@ ARES.registerDay(1, {
     { name: 'Magnetometer survey', who: 'D' },
     { name: 'Surface soil sample', who: 'B' },
     { name: '10-30 cm scoop samples', who: 'B' },
-    { name: 'Nanodrone crack-mouth survey', who: 'D' },
     { name: 'Raman/UV-fluorescence screening', who: 'B' },
     { name: 'ATP/lipid assay of block-1 samples', who: 'B' },
     { name: 'Drill protocol test on easiest ground', who: 'C' },
@@ -119,9 +118,9 @@ ARES.registerDay(1, {
   // 3. Learning day: procedures done for the first time, highlighted in the timeline.
   firstTime: {
     '08:42': ['anchoring safety lines and rim markers', 'relay beacon deployment and link test'],
-    '09:02': ['rim stability survey', 'surface and 10-30 cm scoop sampling', 'in-situ Raman/UV-fluorescence screening', 'drone pre-flight'],
-    '10:37': ['GPR transects', 'drill-protocol test (0.3 m pilot hole)', 'magnetometer survey', 'nanodrone crack-mouth survey', 'ATP/lipid assay and microscopy'],
-    '12:07': ['targeted resampling at GPR- and drone-flagged spots', 'drone retrieval', 'relay-pass comms'],
+    '09:02': ['rim stability survey', 'surface and 10-30 cm scoop sampling', 'in-situ Raman/UV-fluorescence screening'],
+    '10:37': ['GPR transects', 'drill-protocol test (0.3 m pilot hole)', 'magnetometer survey', 'ATP/lipid assay and microscopy'],
+    '12:07': ['targeted resampling at GPR-flagged spots', 'relay-pass comms'],
   },
   Features,
 });

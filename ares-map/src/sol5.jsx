@@ -72,7 +72,6 @@ ARES.registerDay(5, {
   experiments: [
     { name: 'Hand-lens plus Raman screening of breccia and walls for clays and salts', who: 'A/B' },
     { name: 'ATP/lipid screening of the best samples', who: 'B' },
-    { name: 'Microfluidic nanodrone sampling', who: 'D' },
     { name: 'Gas profiling at pit vents', who: 'D' },
     { name: 'Optional shallow core', who: 'A/B' },
   ],

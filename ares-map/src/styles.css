@@ -426,8 +426,6 @@ details.more[open] { display: grid; gap: var(--space-xs); }
 /* ---- Sols view: one mission day per site ---- */
 .app[data-mode="sols"] { grid-template-columns: 0 1fr 0; }
 .app[data-mode="sols"] .panel { display: none; }
-.sols { position: absolute; inset: 0; z-index: 20; display: grid; grid-template-columns: minmax(0, 1fr) minmax(20rem, 30rem); gap: var(--space-md); padding: var(--space-md); background: var(--color-paper); overflow: auto; }
-.sols-side { display: grid; gap: var(--space-sm); align-content: start; min-width: 0; overflow: auto; }
 .sol-card { display: grid; gap: var(--space-xs); padding: var(--space-md); border: 1px solid var(--color-hair); border-radius: var(--radius-card); background: var(--color-paper-2); min-width: 0; }
 .sol-card.is-amber { border-color: var(--color-caution); }
 .sol-h { font-size: var(--text-md); margin: 0; display: flex; flex-wrap: wrap; gap: var(--space-xs); align-items: center; overflow-wrap: break-word; min-width: 0; }
@@ -470,11 +468,6 @@ details.more[open] { display: grid; gap: var(--space-xs); }
 .sol-bar.is-trough, .sol-key.is-trough { fill: var(--color-caution); background: var(--color-caution); }
 .sol-bar.is-plateau, .sol-key.is-plateau { fill: var(--color-accent); background: var(--color-accent); }
 .sol-key { display: inline-block; width: 0.8em; height: 0.8em; vertical-align: middle; }
-.sol-drone { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: var(--space-sm); }
-.sol-gauge { width: 100%; height: auto; }
-.sol-gauge-bg { fill: var(--color-paper-3); }
-.sol-gauge-target { fill: color-mix(in oklab, var(--color-ok) 45%, transparent); }
-.sol-gauge-now { stroke: var(--color-ink); stroke-width: 2; }
 .sol-map { margin: 0; min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: var(--space-2xs); }
 .sol-map svg { width: 100%; height: 100%; min-height: 18rem; background: var(--color-paper-3); border-radius: var(--radius-card); }
 .sol-edge { fill: none; stroke: var(--color-hair); stroke-width: 0.05; stroke-dasharray: 0.3 0.2; }
@@ -491,15 +484,8 @@ details.more[open] { display: grid; gap: var(--space-xs); }
 .sol-rover { fill: var(--color-ok); stroke: var(--color-paper); stroke-width: 0.06; }
 @media (max-width: 50rem) {
   .app[data-mode="sols"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--bar) 1fr; grid-template-areas: "bar" "map"; }
-  .sols { grid-template-columns: minmax(0, 1fr); padding: var(--space-xs); }
-  .sols-side { overflow: visible; }
   .sol-map svg { min-height: 16rem; height: auto; }
 }
-.sols-side { grid-template-columns: minmax(0, 1fr); }
-.sols-side .seg { flex-wrap: wrap; border-radius: var(--radius-card); }
-.sols-side input[type="number"] { width: 100%; min-width: 0; }
-.sols-side .row > .field { flex: 1 1 6rem; min-width: 0; }
-@media (max-width: 50rem) { .sols { align-content: start; } .sol-map { grid-template-rows: auto auto; } .sol-map svg { height: 18rem; } }
 @media (max-width: 50rem) { .sols .sol-map { display: block; min-height: auto; } .sols .sol-map svg { display: block; } }
 /* Sols 3 and 4 */
 .sol-progress { height: 10px; border-radius: var(--radius-pill); background: var(--color-paper-3); overflow: hidden; }
@@ -537,7 +523,6 @@ details.more[open] { display: grid; gap: var(--space-xs); }
 .sol-pnr { fill: var(--color-danger); stroke: var(--color-paper); stroke-width: 0.05; }
 .sol-rim { fill: none; stroke: var(--color-danger); stroke-width: 0.06; }
 .sol-rim.is-setback { stroke-dasharray: 0.15 0.1; stroke: var(--color-caution); }
-.sol-feed { aspect-ratio: 16 / 9; display: grid; place-items: center; border-radius: var(--radius-button); background: radial-gradient(circle at 50% 40%, var(--color-paper-3), var(--color-paper)); color: var(--color-muted); font-weight: 700; letter-spacing: 0; border: 1px dashed var(--color-hair); }
 .sol-queue { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2xs); }
 .sol-queue li { display: flex; flex-wrap: wrap; gap: var(--space-2xs); align-items: center; padding: var(--space-2xs); border: 1px solid var(--color-hair); border-radius: var(--radius-button); background: var(--color-paper-3); cursor: grab; }
 .sol-queue li.is-late { border-color: var(--color-danger); }
@@ -559,14 +544,11 @@ details.more[open] { display: grid; gap: var(--space-xs); }
 .ov-row { cursor: pointer; }
 .ov-row:hover, .ov-row[aria-selected="true"] { background: var(--color-paper-3); }
 .ov-row:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
-.sols { grid-template-columns: minmax(14rem, 22rem) minmax(0, 1fr); }
-.sols-side { grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); align-items: start; }
 .sol-map { position: relative; align-content: start; grid-template-rows: auto auto; }
 .sol-map svg { min-height: 0; height: auto; aspect-ratio: 1; cursor: zoom-in; }
 .sol-map-toggle { position: absolute; top: var(--space-2xs); right: var(--space-2xs); z-index: 1; }
 .sol-map.is-big { position: fixed; inset: var(--space-md); z-index: 40; padding: var(--space-md); background: var(--color-paper); border-radius: var(--radius-card); box-shadow: 0 0 0 100vmax color-mix(in oklab, black 60%, transparent); grid-template-rows: minmax(0, 1fr) auto; }
 .sol-map.is-big svg { height: 100%; aspect-ratio: auto; cursor: zoom-out; }
-@media (max-width: 50rem) { .sols { grid-template-columns: minmax(0, 1fr); } .sols .sol-map svg { height: auto; max-height: 14rem; } }
 
 /* First screen while data loads (Boot.jsx): one headline, one line, a progress bar; the real CTX photo on the right */
 .boot { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-2xl); align-items: center; padding: var(--space-2xl) var(--gutter); max-width: var(--container); margin-inline: auto; }
@@ -581,3 +563,42 @@ details.more[open] { display: grid; gap: var(--space-xs); }
 @keyframes boot-in { from { opacity: 0; transform: scale(1.02); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .boot-fig img { animation: none; } .boot-bar i { transition: none; } }
 @media (max-width: 760px) { .boot { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- Sols layout: tabs, the day at a glance, then map + clock beside the plan and the day's tools ---- */
+.sols { position: absolute; inset: 0; z-index: 20; overflow: auto; background: var(--color-paper); padding: var(--space-md); display: grid; gap: var(--space-md) var(--space-lg); align-content: start; align-items: start;
+  grid-template-columns: minmax(18rem, 26rem) minmax(0, 1fr); grid-template-areas: "tabs tabs" "head head" "main detail"; }
+.sols-tabs { grid-area: tabs; justify-self: start; flex-wrap: wrap; }
+.sols-tabs .tab { white-space: nowrap; }
+.sols-head { grid-area: head; display: grid; gap: var(--space-xs); min-width: 0; }
+.sols-main { grid-area: main; display: grid; gap: var(--space-sm); min-width: 0; }
+.sols-detail { grid-area: detail; display: grid; gap: var(--space-lg); min-width: 0; }
+@media (min-height: 52rem) and (min-width: 50.01rem) { .sols-main { position: sticky; top: 0; } }
+.sols input[type="number"] { width: 100%; min-width: 0; }
+.sols .row > .field { flex: 1 1 6rem; min-width: 0; }
+
+.sol-hero { display: grid; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); border: 1px solid var(--color-hair); border-radius: var(--radius-card); background: var(--color-paper-2); }
+.sol-title { margin: 0; font-size: var(--text-xl, 2rem); line-height: 1.15; display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-sm); align-items: center; }
+.sol-title .sol-risk, .sol-title .sol-badge { font-size: var(--text-xs); }
+.sol-lede { margin: 0; max-width: 70ch; color: var(--color-ink-2); }
+.sol-stats { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--space-xs); }
+.sol-stats > div { padding: var(--space-xs) var(--space-sm); border-left: 2px solid var(--color-accent); background: var(--color-paper-3); border-radius: 0 var(--radius-button) var(--radius-button) 0; }
+.sol-stats dt { font-size: var(--text-xs); color: var(--color-muted); }
+.sol-stats dd { margin: 0; font-size: var(--text-lg, 1.5rem); font-weight: 600; color: var(--color-ink); }
+.sol-stats dd.sol-stat-sub { font-size: var(--text-xs); font-weight: 400; color: var(--color-muted); }
+.sol-facts { margin: 0; display: flex; flex-wrap: wrap; gap: var(--space-2xs) var(--space-lg); font-size: var(--text-xs); }
+.sol-facts > div { display: flex; gap: var(--space-2xs); }
+.sol-facts dt { color: var(--color-muted); }
+.sol-facts dd { margin: 0; }
+
+.sols-group { display: grid; gap: var(--space-sm); min-width: 0; }
+.sols-group-h { margin: 0; padding-bottom: var(--space-2xs); border-bottom: 1px solid var(--color-rule); font-size: var(--text-md); display: flex; flex-wrap: wrap; gap: var(--space-xs); align-items: baseline; }
+/* cards of uneven height stack in columns with no ragged gaps */
+.sols-flow { columns: 2 22rem; column-gap: var(--space-sm); }
+.sols-flow > * { break-inside: avoid; margin-bottom: var(--space-sm); }
+
+@media (max-width: 50rem) {
+  .sols { padding: var(--space-xs); grid-template-columns: minmax(0, 1fr); grid-template-areas: "tabs" "head" "main" "detail"; }
+  .sol-hero { padding: var(--space-sm); }
+  .sol-title { font-size: var(--text-lg, 1.5rem); }
+  .sols .sol-map svg { height: auto; max-height: 16rem; }
+}

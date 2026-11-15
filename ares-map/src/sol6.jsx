@@ -3,13 +3,12 @@ import { useState } from 'react';
 import { ARES, useSolState, toMin, fmtMin, fmtDur, socAt } from './sols.js';
 import { GasPanel, ReturnCard, PnrMarker, AbortCard, methanePeak } from './solkit.jsx';
 
-const SEAL_BY = '11:55', STATUS = ['planned', 'collected', 'sealed', 'stowed'], DRONE_PHASES = ['09:46', '11:41'];
+const SEAL_BY = '11:55', STATUS = ['planned', 'collected', 'sealed', 'stowed'];
 
 function Features({ day, t }) {
   return <>
     <Countdown day={day} t={t} />
     <RimSafety t={t} />
-    <DroneFeed day={day} t={t} />
     <Queue t={t} />
     <GasPanel n={6} t={t} label="Tethered gas probe (TLS)" />
     <ReturnCard day={day} t={t} longest />
@@ -49,42 +48,6 @@ function RimSafety({ t }) {
   );
 }
 
-// 2. Drone interior view: simulated feed, depth, light, temperature, flag a wall-sample target.
-const droneAt = (day, t, maxM) => { // descend over 60% of each drone slot, hover, climb out in the last 15%
-  for (const from of DRONE_PHASES) {
-    const p = day.phases.find((x) => x.from === from); if (t < p.t0 || t >= p.t1) continue;
-    const f = (t - p.t0) / (p.t1 - p.t0), top = from === '11:41' ? maxM * 0.6 : maxM; // final sweep stays shallower
-    return f < 0.6 ? top * f / 0.6 : f < 0.85 ? top : top * (1 - f) / 0.15;
-  }
-  return null;
-};
-const droneMinutes = (day, t) => DRONE_PHASES.reduce((s, from) => { const p = day.phases.find((x) => x.from === from); return s + Math.max(0, Math.min(t, p.t1) - p.t0); }, 0);
-function DroneFeed({ day, t }) {
-  const [maxM, setMaxM] = useSolState(6, 'droneMaxM', 40), [, setQ] = useSolState(6, 'queue', null), [flagged, setFlagged] = useState(null);
-  const depth = droneAt(day, t, maxM), light = depth == null ? null : 100 * Math.exp(-depth / 12), temp = depth == null ? null : -45 + depth * 0.4;
-  const flag = () => {
-    const lmst = fmtMin(t), name = `Wall-sample target at ${depth.toFixed(0)} m (drone-flagged ${lmst})`;
-    setQ((q) => [...(q ?? seedQueue()), { id: `f${Date.now()}`, name, high: true, status: 'planned' }]); setFlagged(name);
-    ARES.logEvent(6, 'target', name, t);
-  };
-  return (
-    <section className="sol-card" aria-labelledby="df-h">
-      <h2 id="df-h" className="sol-h2">Drone interior view</h2>
-      <div className="sol-feed" role="img" aria-label="Simulated drone feed placeholder">SIMULATED DRONE FEED</div>
-      <dl className="sol-dl">
-        <div><dt>Depth</dt><dd className="num">{depth == null ? 'drone not flying' : `${depth.toFixed(1)} m of ${maxM} m`}</dd></div>
-        <div><dt>Light level</dt><dd className="num">{light == null ? '—' : `${light.toFixed(0)}% of surface`}</dd></div>
-        <div><dt>Temperature</dt><dd className="num">{temp == null ? '—' : `${temp.toFixed(0)} °C`}</dd></div>
-        <div><dt>Drone minutes today</dt><dd className="num">{Math.round(droneMinutes(day, t))}</dd></div>
-      </dl>
-      <label className="field small">Deepest planned imaging (m, assumed)<input type="number" min="5" max="200" value={maxM} onChange={(e) => setMaxM(Math.max(5, +e.target.value || 5))} /></label>
-      <button className="btn btn-s" disabled={depth == null} onClick={flag}>Target flagged</button>
-      {flagged && <p className="small" role="status">Added to the sample queue: {flagged}</p>}
-      <p className="small muted">Flying during {DRONE_PHASES.join(' and ')} slots. Depth, light and temperature are simulated.</p>
-    </section>
-  );
-}
-
 // 1. Sample priority queue: drag to reorder (or Up/Down), status, warning if a high-priority item is unsealed at 11:55.
 const seedQueue = () => (ARES.get(4, 'targetsSaved', null)?.list ?? []).filter((x) => x.site === '5' || !x.site).map((x, i) => ({ id: `s${x.id}`, name: x.name, high: i < 3, status: 'planned' }));
 function Queue({ t }) {
@@ -109,7 +72,7 @@ function Queue({ t }) {
           </li>
         ))}
       </ol>
-      {!q.length && <p className="small muted">Empty. Save Sol 4's target ranking, flag drone targets, or add samples here.</p>}
+      {!q.length && <p className="small muted">Empty. Save Sol 4's target ranking or add samples here.</p>}
       <form className="row" onSubmit={(e) => { e.preventDefault(); if (!name.trim()) return; save((l) => [...l, { id: `m${Date.now()}`, name: name.trim(), high: false, status: 'planned' }]); setName(''); }}>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Add a sample" aria-label="New sample name" />
         <button className="btn btn-s">Add</button>
@@ -127,7 +90,6 @@ function Summary({ day, t }) {
       <h2 id="sm-h" className="sol-h2">Day summary <span className="small muted">{done ? `closed ${close.to}` : `fills in until close at ${close.to}`}</span></h2>
       <dl className="sol-dl">
         <div><dt>Samples collected</dt><dd className="num">{q.filter((x) => x.status !== 'planned').length} of {q.length} in the queue</dd></div>
-        <div><dt>Drone minutes</dt><dd className="num">{Math.round(droneMinutes(day, t))}</dd></div>
         <div><dt>Methane peak</dt><dd className="num">{methanePeak(6).toFixed(2)} ppb (simulated)</dd></div>
         <div><dt>SOC at return</dt><dd className="num">{socAt(day, back.t1).toFixed(0)}% at {back.to} (modelled)</dd></div>
       </dl>
@@ -163,7 +125,6 @@ ARES.registerDay(6, {
 12:09-14:15 | drive_back | - | A drives, C co-driver; B stow best samples first; D comms/health.
 14:15-14:30 | reserve | - | Dock, recharge, debrief.`,
   experiments: [
-    { name: 'Nanodrone interior imaging', who: 'D' },
     { name: 'Wall-sample retrieval', who: 'A' },
     { name: 'Tethered gas profiling', who: 'B' },
     { name: 'Shallow drill hole last', who: 'C' },

@@ -32,46 +32,61 @@ export default function SolsView({ site, routes = {}, noCtx = new Set(), baseUrl
 
   return (
     <div className="sols">
-      <SolMap site={site} baseUrl={baseUrl} {...ctx} route={routes[day.n]} noCtx={noCtx.has(day.n)} big={big} setBig={setBig} />
-      <div className="sols-side">
-        <nav className="seg" aria-label="Sol">
-          {days.map((d) => <button key={d.n} className="tab" aria-pressed={d.n === day.n} onClick={() => pick(d.n)}>Sol {d.n}</button>)}
-        </nav>
-        {buffer.length > 0 && <div className="warn small" role="status"><strong>Sol 4 buffer plan</strong>{ARES.getDay(4) ? '' : ' (Sol 4 not built yet)'} carries {buffer.length} warning{buffer.length > 1 ? 's' : ''}: {buffer.map(([, v]) => v).join(' ')}</div>}
+      {/* Reading order: pick a sol, read the day at a glance, watch it run beside the map, then the plan and the day's tools. */}
+      <nav className="seg sols-tabs" aria-label="Sol">
+        {days.map((d) => <button key={d.n} className="tab" aria-pressed={d.n === day.n} onClick={() => pick(d.n)}>Sol {d.n}</button>)}
+      </nav>
+      <div className="sols-head">
         <Header day={day} />
+        {buffer.length > 0 && <div className="warn small" role="status"><strong>Sol 4 buffer plan</strong>{ARES.getDay(4) ? '' : ' (Sol 4 not built yet)'} carries {buffer.length} warning{buffer.length > 1 ? 's' : ''}: {buffer.map(([, v]) => v).join(' ')}</div>}
+      </div>
+      <div className="sols-main">
+        <SolMap site={site} baseUrl={baseUrl} {...ctx} route={routes[day.n]} noCtx={noCtx.has(day.n)} big={big} setBig={setBig} />
         <Clock {...ctx} rate={rate} setRate={setRate} />
         <Telemetry {...ctx} />
-        {day.Features && <day.Features {...ctx} />}
-        <Timeline {...ctx} />
-        <Experiments day={day} />
-        {(day.n === 5 || day.n === 6) && <PriorityTargets />}
+      </div>
+      <div className="sols-detail">
+        <section className="sols-group" aria-labelledby="g-plan">
+          <h2 id="g-plan" className="sols-group-h">Day plan</h2>
+          <div className="sols-flow"><Timeline {...ctx} /><Experiments day={day} /></div>
+        </section>
+        {(day.Features || day.n === 5 || day.n === 6) && <section className="sols-group" aria-labelledby="g-tools">
+          <h2 id="g-tools" className="sols-group-h">Sol {day.n} tools <span className="small muted">simulated values unless a card says otherwise</span></h2>
+          <div className="sols-flow">{day.Features && <day.Features {...ctx} />}{(day.n === 5 || day.n === 6) && <PriorityTargets />}</div>
+        </section>}
       </div>
     </div>
   );
 }
 
 function Header({ day }) {
-  const back = day.phases.find((p) => p.type === 'drive_back');
-  const rows = day.kind === 'buffer' ? [
+  const back = day.phases.find((p) => p.type === 'drive_back'), buffer = day.kind === 'buffer';
+  // The few numbers a reviewer needs first, large; the rest stay below in small type.
+  const stats = buffer ? [
+    ['Window', `${day.window[0]}-${day.window[1]}`, 'LMST'],
+    ['Rover travel', 'none', 'stays at base'],
+    ['Breaks', String(day.phases.filter((p) => p.type === 'break').length), ''],
+  ] : [
+    ['Drive each way', `${day.driveMin} min`, `${day.pathKm.toFixed(1)} km path`],
+    ['Leave site by', back.from, 'LMST'],
+    ['Back at base', back.to, 'LMST'],
+    ['Science', `${day.scienceMin} min`, `net work ${day.netWorkMin} min`],
+    ['Battery at end', `${day.endSoc}%`, 'expected'],
+  ];
+  const rows = buffer ? [
     ['Location', `base, ${day.base.lat.toFixed(3)}°N, ${day.base.lon.toFixed(3)}°E`],
-    ['Rover travel', 'none'],
-    ['Window', `${day.window[0]}-${day.window[1]} LMST, ${day.phases.filter((p) => p.type === 'break').length} breaks`],
-    ['Purpose', day.purpose],
   ] : [
     ['Coordinates', `${day.site.lat.toFixed(3)}°N, ${day.site.lon.toFixed(3)}°E`],
-    ['Distance', `straight ${day.straightKm} km, path ${day.pathKm.toFixed(1)} km`],
+    ['Distance', `straight ${day.straightKm} km`],
     ['Bearing', `${String(day.bearing).padStart(3, '0')}° (${compass16(day.bearing)})`],
-    ['One-way drive', `${day.driveMin} min`],
-    ['Terrain', day.terrain],
     ['Window', `${day.window[0]}-${day.window[1]} LMST`],
-    ['Leave site by', back.from], ['Back at base', back.to],
-    ['Net work', `${day.netWorkMin} min, science ${day.scienceMin} min`],
-    ['Expected end SOC', `about ${day.endSoc}%`],
   ];
   return (
-    <section className="sol-card" aria-labelledby="sol-h">
-      <h2 id="sol-h" className="sol-h">Sol {day.n} · {day.siteName} <span className={'sol-risk is-' + day.riskLevel}>{day.risk}</span>{day.badges?.map((b) => <span key={b} className="sol-badge">{b}</span>)}</h2>
-      <dl className="sol-dl">{rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd className="num">{v}</dd></div>)}</dl>
+    <section className="sol-hero" aria-labelledby="sol-h">
+      <h2 id="sol-h" className="sol-title">Sol {day.n} · {day.siteName} <span className={'sol-risk is-' + day.riskLevel}>{day.risk}</span>{day.badges?.map((b) => <span key={b} className="sol-badge">{b}</span>)}</h2>
+      <p className="sol-lede">{buffer ? day.purpose : day.terrain}</p>
+      <dl className="sol-stats">{stats.map(([k, v, sub]) => <div key={k}><dt>{k}</dt><dd className="num">{v}</dd>{sub && <dd className="sol-stat-sub">{sub}</dd>}</div>)}</dl>
+      <dl className="sol-facts">{rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd className="num">{v}</dd></div>)}</dl>
       {!day.check.ok && <p className="warn small">The coordinates put the site {day.check.km.toFixed(1)} km at {day.check.deg.toFixed(0)}° from the habitat, not {day.straightKm} km at {day.bearing}° as the brief says. Check the brief.</p>}
     </section>
   );

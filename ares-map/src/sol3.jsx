@@ -163,7 +163,6 @@ const day = ARES.registerDay(3, {
     { name: 'Rock surface-versus-interior comparison', who: 'A' },
     { name: 'Perchlorate assay', who: 'A/B' },
     { name: 'Organics assay', who: 'B' },
-    { name: 'Borehole drone imaging', who: 'D' },
   ],
   alertsAt: (rover) => (rover.moving && rover.alongKm >= day.pathKm - SLOW_KM ? ['Boulder field: last 2 km before Site 3. Slow down.'] : []),
   Features, MapExtras,

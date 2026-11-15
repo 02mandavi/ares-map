@@ -1,5 +1,4 @@
 // Sol 2: Site 2, giant-polygon troughs. Only this sol's data and features live here.
-import { useEffect } from 'react';
 import { ARES, useSolState } from './sols.js';
 
 const ZONE_KM = 0.5; // soft trough floor: the last 0.5 km before the site
@@ -8,13 +7,11 @@ const inZone = (day, rover) => rover.alongKm >= day.pathKm - ZONE_KM && rover.al
 const slipAt = (day) => (rover) => (!rover.moving ? 0 : inZone(day, rover) ? 6 + 14 * (rover.alongKm - (day.pathKm - ZONE_KM)) / ZONE_KM : 4);
 
 const METRICS = [['tempC', 'Temperature', '°C'], ['moisture', 'Moisture (relative permittivity)', ''], ['methanePpb', 'TLS methane', 'ppb']];
-const DRONE = ['launching', 'descending', 'hovering', 'ascending', 'recovered'];
 
 function Features({ day, rover }) {
   return <>
     <Trafficability day={day} rover={rover} />
     <Compare />
-    <Drone />
     <VsSol1 />
   </>;
 }
@@ -65,52 +62,7 @@ function Compare() {
   );
 }
 
-// 3. Drone descent tracker: depth against an editable 10-30 m target, battery and status.
-function Drone() {
-  const [d, setD] = useSolState(2, 'drone', { min: 10, max: 30, depth: 0, battery: 100, status: 'launching', sim: false });
-  const set = (k, val) => setD((x) => ({ ...x, [k]: val }));
-  useEffect(() => { // simulated descent, one step a second
-    if (!d.sim) return;
-    const id = setInterval(() => setD((x) => {
-      const mid = (x.min + x.max) / 2, b = Math.max(0, x.battery - 3);
-      if (x.status === 'launching') return { ...x, status: 'descending', battery: b };
-      if (x.status === 'descending') { const depth = Math.min(mid, x.depth + 4); return { ...x, depth, battery: b, status: depth >= mid ? 'hovering' : 'descending', hover: 0 }; }
-      if (x.status === 'hovering') return (x.hover ?? 0) >= 3 ? { ...x, status: 'ascending', battery: b } : { ...x, hover: (x.hover ?? 0) + 1, battery: b };
-      if (x.status === 'ascending') { const depth = Math.max(0, x.depth - 5); return { ...x, depth, battery: b, status: depth === 0 ? 'recovered' : 'ascending', sim: depth !== 0 }; }
-      return { ...x, sim: false };
-    }), 1000);
-    return () => clearInterval(id);
-  }, [d.sim, setD]);
-  const G = 120, s = (m) => m / 40 * G, ok = d.depth >= d.min && d.depth <= d.max;
-  return (
-    <section className="sol-card" aria-labelledby="dr-h">
-      <h2 id="dr-h" className="sol-h2">Drone descent <span className="small muted">status: {d.status}</span></h2>
-      <div className="sol-drone">
-        <svg viewBox={`0 0 70 ${G + 10}`} className="sol-gauge" role="img" aria-label={`Depth ${d.depth} m, target ${d.min} to ${d.max} m`}>
-          <rect x="20" y="5" width="16" height={G} className="sol-gauge-bg" />
-          <rect x="20" y={5 + s(d.min)} width="16" height={s(d.max - d.min)} className="sol-gauge-target" />
-          <line x1="14" x2="42" y1={5 + s(d.depth)} y2={5 + s(d.depth)} className="sol-gauge-now" />
-          {[0, 10, 20, 30, 40].map((m) => <text key={m} x="44" y={9 + s(m)} className="sol-tick">{m} m</text>)}
-        </svg>
-        <div className="stack-s">
-          <label className="field small">Depth now (m)<input type="range" min="0" max="40" value={d.depth} onChange={(e) => set('depth', +e.target.value)} /></label>
-          <p className="small num">{d.depth} m · {ok ? 'in target band' : 'outside target band'}</p>
-          <div className="row">
-            <label className="field small">Target from (m)<input type="number" min="0" max="40" value={d.min} onChange={(e) => set('min', +e.target.value)} /></label>
-            <label className="field small">to (m)<input type="number" min="0" max="40" value={d.max} onChange={(e) => set('max', +e.target.value)} /></label>
-          </div>
-          <label className="field small">Battery (%)<input type="number" min="0" max="100" value={d.battery} onChange={(e) => set('battery', +e.target.value)} /></label>
-        </div>
-      </div>
-      <div className="seg" role="group" aria-label="Drone status">
-        {DRONE.map((st) => <button key={st} className="tab" aria-pressed={d.status === st} onClick={() => set('status', st)}>{st}</button>)}
-      </div>
-      <button className="btn btn-s" onClick={() => setD((x) => ({ ...x, depth: 0, battery: 100, status: 'launching', sim: !x.sim }))}>{d.sim ? 'Stop simulation' : 'Simulate a descent'}</button>
-    </section>
-  );
-}
-
-// 4. Sol 1 vs Sol 2, using the saved Sol 1 baseline.
+// 3. Sol 1 vs Sol 2, using the saved Sol 1 baseline.
 function VsSol1() {
   const [v] = useSolState(2, 'readings', { trough: {}, plateau: {} }), b = ARES.getBaseline(1);
   const row = (name, key, unit, k2) => {
@@ -164,7 +116,6 @@ const day = ARES.registerDay(2, {
     { name: 'Soil-moisture/permittivity probes', who: 'A' },
     { name: 'TLS methane sampling, floor then plateau', who: 'B' },
     { name: 'Wall-scrape samples', who: 'B' },
-    { name: 'First nanodrone descent with temperature/humidity/light', who: 'D' },
     { name: 'Soil columns at trough centre and plateau', who: 'C' },
     { name: 'ATP/lipid assay and microscopy', who: 'B' },
   ],

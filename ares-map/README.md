@@ -23,7 +23,7 @@ A layered 3D map of one crater site near Chryse Planitia (28.43° N, 319.77° E)
 | Heights | HRSC-MOLA blended DEM v2 | 200 m/px | ESA/DLR/FU Berlin, NASA MOLA, USGS |
 | Surface radiation | MSL RAD at Gale crater | one site | Hassler et al. 2014, Science (verify) |
 
-Derived layers (slope, coverage, radio shadow, terrain classes) are computed in the browser from these. `tools/prep.py` rebuilds the data files from the raw downloads in `tools/raw`.
+Derived layers (slope, coverage, radio shadow, terrain classes) are computed in the browser from these. `tools/prep.py` rebuilds the data files from the raw downloads in `tools/raw`. `node tools/ctx-add.mjs <CTX product id>` adds another CTX image where `ctx.jpg` is empty: it downloads the EDR from the PDS, places it by its ODE footprint, registers it to the CTX already there, and refuses a weak match (used for J15_050666_2087, the east strip).
 
 ## Limits, stated plainly
 
